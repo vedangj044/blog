@@ -4,7 +4,7 @@ date = 2017-09-22
 category = "Prog"
 
 [extra]
-author = "Jane Doe"
+author = "Vedang Joshi"
 
 [taxonomies]
 tags = ["rust", "ssg", "other"]

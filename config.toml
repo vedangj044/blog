@@ -42,3 +42,5 @@ highlight_code = true
 [extra]
 # Put all your custom variables here
 author = "Vedang Joshi"
+links = [ {name = "website", url = "https://vedangj044.github.io" } ]
+google_analytics = { enabled = true, id = "G-683TMZN24E"}
