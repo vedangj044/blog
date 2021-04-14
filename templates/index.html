@@ -13,29 +13,21 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
 
         <!-- Standard meta tags -->
-        {% if page.extra.author %}<meta name="author" content="{{ page.extra.author }}">{% endif %}
-        {% if page.summary %}<meta name="description" content="{{ page.summary | markdown(inline=true) }}">{% endif %}
+        <meta name="author" content="Vedang Joshi">
+        <meta name="description" content="Blog of Vedang Joshi">
 
         <!-- Open Graph Tags -->
-        <meta property="og:site_name" content="{{ config.title }}">
-        {% if page %}
-        <meta property="og:title" content="{{ page.title }}">
-        <meta property="og:url" content="{{ get_url(path=page.path, trailing_slash=false) }}">
-        <meta property="og:description" content="{{ page.summary | markdown(inline=true) }}">
+        <meta property="og:site_name" content="Vedang's Blog">
+        <meta property="og:title" content="Blog of Vedang Joshi">
+        <meta property="og:url" content="https://vedangj044.github.io/blog/">
+        <meta property="og:description" content="Welcome to my blog. I write about Technology and Science.">
         {% if page.extra.banner_path %}
         <meta property='og:image' content="{{ resize_image(path=page.extra.banner_path, width=1200, height=627, op="fill", format="auto", quality=75) }}"/>
         <meta property='og:image:width' content="1200"/>
         <meta property='og:image:height' content="627"/>
         {% endif %}
         <meta property="og:type" content="article">
-        <meta property="article:published_time" content="{{ page.date | date(format="%Y-%m-%d") }}">
-        {% if page.updated %}<meta property="article:modified_time" content="{{ page.updated | date(format="%Y-%m-%d") }}">{% endif %}
-        {% if page.extra.author_url %}<meta property="article:author" content="{{ page.extra.author_url }}">{% endif %}
-        {% for tag in page.taxonomies.tags %}<meta property="article:tags" content="{{ tag }}">{% endfor %}
-        {% else %}
-        <meta property="og:type" content="website">
-        <meta property="og:url" content="{{ get_url(path="", trailing_slash=false) }}">
-        {% endif %}
+        <meta property="article:author" content="https://vedangj044.github.io/">
 
         <!-- CSS -->
         <link rel="stylesheet" href="{{ get_url(path="main.css", trailing_slash=false) }}">
@@ -56,7 +48,6 @@
     
     {% if page %}<body class="single">{% else %}<body class="list">{% endif %}
     
-    <!-- Apply theme -->
 
     {% block body %}
         <header class="header">
@@ -76,7 +67,7 @@
                         </a>
                     </li> 
                     {% for link in config.extra.links %}
-                        <li><a href="{{ link.url }}">{{ link.name }}</a></li>
+                        <li><a target="_blank" href="{{ link.url }}">{{ link.name }}</a></li>
                     {% endfor %}
                     <script>
                         // set initial state
@@ -100,7 +91,6 @@
                         }
 
                         if (localStorage.getItem(key) === null) {
-                            console.log("Asd");
                             li();
                         }
                         else if (localStorage.getItem(key) === "false") {
@@ -115,7 +105,6 @@
                                 li();
                             }
                             else {
-                                console.log("sad");
                                 dar();
                             }
                         }
@@ -145,7 +134,7 @@
         </main>
 
         <footer class="footer">
-            <span>&copy; {{ now() | date(format="%Y") }} <a href="{{ get_url(path="", trailing_slash=false ) }}">{{ config.title }}</a></span>
+            <span>&copy; {{ now() | date(format="%Y") }} <a href="https://vedangj044.github.io/">Github</a></span>
             <span>&middot;</span>
             <span>Powered by <a href="https://www.getzola.org" rel="noopener" target="_blank">Zola</a>️</span>
             <span>&middot;</span>

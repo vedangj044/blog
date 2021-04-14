@@ -8,7 +8,7 @@ default_language = "en"
 
 theme = "zola-paper"
 
-generated_feed = true
+generate_feed = true
 
 feed_filename = "rss.xml"
 
@@ -42,5 +42,5 @@ highlight_code = true
 [extra]
 # Put all your custom variables here
 author = "Vedang Joshi"
-links = [ {name = "website", url = "https://vedangj044.github.io" } ]
+links = [ {name = "Website", url = "https://vedangj044.github.io" } ]
 google_analytics = { enabled = true, id = "G-683TMZN24E"}
