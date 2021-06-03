@@ -1,6 +1,6 @@
 +++
 title = "GSOC, Drogue IoT & the Community"
-date = 2021-06-01S
+date = 2021-06-01
 category = "GSOC"
 
 [extra]
@@ -10,13 +10,13 @@ author = "Vedang Joshi"
 tags = ["GSOC", "DrogueIoT", "IoT", "Github", "Open source"]
 +++
 
-This year, I got an opportunity to work as a Google summer of code student at Drogue IoT, which is a part of the JBoss community ( Red Hat or IBM ).
+This year, I got an opportunity to work as a Google summer of code student at [Drogue IoT](https://github.com/drogue-iot), which is a part of the JBoss community ( Red Hat or IBM ).
 
 ### Understanding the project
 
 While looking for organizations on the GSOC website, I came across the idea list of the JBoss community. It had only 3 ideas all from an organization named Drogue IoT. I read those, but barely comprehended any, but I was curious so I went to their Github, blog, and matrix channel. To help myself understand what their project is, I started reading some of their earliest [blogs](https://blog.drogue.io/first-steps-in-iot/). I read that, and one line just clicked me, which was
 
-> Plus, given it's a known problem domain with at least one known solution to me, I can concentrate on the implementation, not on the specification and design.
+> "Plus, given it's a known problem domain with at least one known solution to me, I can concentrate on the implementation, not on the specification and design."
 
 So, It's okay to do everything by hand when we have one device. But we can't do this at scale. There needs to be a system that sits in between devices and applications, to handle everything, from configuring devices to sending them commands. This is what  Drogue Cloud does,
 
