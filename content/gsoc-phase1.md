@@ -31,7 +31,7 @@ This concludes the flow, now we can use this device certificate and its key to a
 This may sound like a lot to do, especially if you are not familiar with tools like [OpenSSL](https://www.openssl.org/), don't worry, DRG is here to rescue. DRG abstracts this entire process in not more than 2 commands.
 
 - `drg trust create`: Creates an app key, Trust anchor, and adds it to the application object.
-- `drg trust add`: Uses the app key to sign and export device certificate and key.
+- `drg trust enroll`: Uses the app key to sign and export device certificate and key.
 
 We have focused on having a pure rust implementation for all the cryptography we have used here. [`rcgen`](https://crates.io/crates/rcgen) crate is just amazing and makes handling X.509 certificates very easy. Currently, We using the ECDSA algorithm to generate the key pairs, this is the default for the rcgen crate, but we are working on generating and using RSA key pairs as well.
 
@@ -43,10 +43,11 @@ To use X.509 authentication, please follow the following steps. Assuming that yo
 
 - `drg create app <app_name>` - This commands create an application.
 - `drg create device <device_name> --app <app_name> --cert` - This command creates a new device. Notice, the `--cert` flag used here, it formats the device name according to what is needed by Drogue cloud for certificate authentication.
-- `drg trust create --app <app_name> --key-output <app-key-filename.pem>` - This command generates a new key and a certificate, uses the key to sign the cert, finally uploads the certificate to the application object, and writes the key to the file. Optionally, you may specify `--days <no_of_days>` argument, for the validity, by default it is 365.
-- `drg trust add --app <app_name> --device <device_name> --ca-key <app_key_filename.pem> --key-output <deivce_key_filename.pem> --out <deivce_cert_filename.pem>` - This commands uses the app key to sign a newly generated device certificate + key. This certificate and key are exported to the respective files.
+- `drg trust create <app_name> --key-output <app-key-filename.pem>` - This command generates a new key and a certificate, uses the key to sign the cert, finally uploads the certificate to the application object, and writes the key to the file. Optionally, you may specify `--days <no_of_days>` argument, for the validity, by default it is 365.
+- `drg trust enroll <device_name> --app <app_name> --ca-key <app_key_filename.pem> --key-output <deivce_key_filename.pem> --out <deivce_cert_filename.pem>` - This commands uses the app key to sign a newly generated device certificate + key. This certificate and key are exported to the respective files.
 
 Now, we can use this device certificate and key to authenticate the devices. An example to do the same over MQTT using the [MQTT-CLI (v4.6.2)](https://github.com/hivemq/mqtt-cli/releases/tag/v4.6.3) tool would look like.
+
 `mqtt pub -h <mqtt_host> -p 443 --cert device-cert.pem --key device-key.pem`
 
 ### To Do
