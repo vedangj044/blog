@@ -37,7 +37,7 @@ The second evaluation for the Google Summer of Code 2021 has begun. This has bee
 We can authenticate our devices to Drogue IoT using either passwords or X.509 certificates. The latter method is better as it is scalable and more secure. To know more about the implementation kindly refer to the [phase 1 blog](https://vedangj044.github.io/blog/gsoc-phase1/).
 
 In the past few weeks, I added support for generating RSA keys using the [RSA](https://crates.io/crates/rsa) crate. The private keys can be generated from any of the 3 algorithms - RSA, ECDSA, EdDSA. To specify an algorithm you would need to specify the `--algo` parameter.
-> `drg trust create --app <app_name> --algo RSA`
+> `drg trust create <app_name> --algo RSA`
 
 To save you the trouble of specifying the parameter every time, we leveraged the context functionality in drg. Thus you can specify a default signature algorithm for a context.
 > `drg context set-default-algo RSA`
@@ -56,7 +56,7 @@ The only additional step is
 > `openssl pkcs8 -topk8 -nocrypt -outform der -in key.pem > private.pk8`
 
 Now, you can use the `private.pk8` file to sign app or device certificates using
-> `drg trust create --app <app_name> --key-input <key_file>`
+> `drg trust create <app_name> --key-input <key_file>`
 
 In the intial proposal, there were talks about creating a "key-store" to securely save all these private keys, but as we progressed the decision about where to store the keys was left to the user. That's when I thought, it would be a good idea to demonstrate how to store keys in a solution like [LastPass](https://www.lastpass.com/) and use it in drg. Frankly, it is just some 'terminal trickery' :).
 
@@ -64,7 +64,7 @@ Assuming you have LastPass cli installed, and you are logged in DRG and LastPass
 > `printf "Private Key: %s\n" "$(drg trust create --app app_name)" | lpass add --non-interactive --sync=now "app_name" --note-type=ssh-key`
 
 Now, to use that key to sign device cert+key
-> `drg trust add --ca-key <(lpass show app_name --field="Private Key") --app app_name --device d1`
+> `drg trust enroll d1 --ca-key <(lpass show app_name --field="Private Key") --app app_name`
 
 In addition to this, we also tried writing unit test cases for various functions used by the `trust` subcommand. These test cases provide a ~92% code coverage in the `trust.rs` file. Required changes were also made to the ci file to run the test cases on each commit.
 
