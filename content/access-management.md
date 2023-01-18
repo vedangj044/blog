@@ -10,8 +10,6 @@ author = "Vedang Joshi"
 tags = ["Security", "Access Management", "DevOps"]
 +++
 
-# Access Management Best Practices
-
 We are all aware of the importance of data in today’s world. Anything valuable always comes with its security risks. The first step in the direction of protecting data is limiting who has access to it as much as possible. Identity and access management is a framework that helps us make sure that the right people have access to the right data and resources for the right duration.
 
 In an organization, we work with many tools, for example - VMs, Databases, SAAS tools, etc. All these tools have their approach to user management. It is a cumbersome process to manage the users across all the platforms as the organization scales and the number of users increases. Thus having policies and procedures for user creation, audit, and removal helps reduce the security risk.
