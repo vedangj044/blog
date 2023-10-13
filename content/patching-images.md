@@ -12,7 +12,7 @@ tags = ["Security", "Python", "DevOps"]
 
 "Patch for CVE-2023-12345 that affected py-cool library from version v1.3 to v2.6 was released - v2.7" mentioned the release note of py-cool library on GitHub.
 
-This statement can have two distinct reactions by all the people using py-cool. For a few teams, it happens to be a sigh of relief, as they can now see their CI colored green, while for a few other teams, it could just be a blip in the ocean - one more patch, one more vulnerability. What differentiates both these teams? which one is the better state to be in? and how can we go from being the second team to the first? Let's explore this in this article.
+This statement can have two distinct reactions by all the people using py-cool. For a few teams, it happens to be a sigh of relief, as they can now see their CI colored green, while for a few other teams, it could just be a blip in the ocean - one more patch, one more vulnerability. What differentiates both these teams? which one is the better state to be in? and how can we go from being the second team to the first? Let's explore this.
 
 A lot of what I am going to share in this article is just the elaboration of the following 2 words: 
 PROACTIVE MAINTAINCE. Yes, that's it. If you already understand where we are headed, you can go back and sip your sangria.
