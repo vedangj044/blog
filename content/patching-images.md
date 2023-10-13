@@ -32,7 +32,7 @@ Once you have decided to go ahead and use the library. You need to constantly li
 	- **Changelogs**: Pay attention to changelogs to understand what changes have been made in each update. This information can help you assess the impact of updates on your project.
 	- **Direct Communication**: Don't hesitate to communicate directly with dependency maintainers. Building a rapport can be invaluable when troubleshooting issues or requesting assistance.
 
-Now, that you know who is writing the code you use. You need to stay updated with the new features and patches they are releasing.
+Now that you know who is writing the code you use. You need to stay updated with the new features and patches they are releasing.
 
 - Plan Regular Dependency Reviews
 	- **Set a Schedule**: Establish a routine for dependency reviews, aiming to conduct them at least every two weeks. Consistency is key to managing dependencies effectively.
