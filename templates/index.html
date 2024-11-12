@@ -33,7 +33,7 @@
         <link rel="stylesheet" href="{{ get_url(path="main.css", trailing_slash=false) }}">
 
         <!-- Feeds -->
-        {% if config.generate_feed %}<link rel="alternate" type={% if config.feed_filename == "atom.xml" %}"application/atom+xml"{% else %}"application/rss+xml"{% endif %} title="RSS" href="{{ get_url(path=config.feed_filename) | safe }}">{% endif %}
+        {% if config.generate_feed %}<link rel="alternate" type={% if config.feed_filenames[0] == "atom.xml" %}"application/atom+xml"{% else %}"application/rss+xml"{% endif %} title="RSS" href="{{ get_url(path=config.feed_filenames[0]) | safe }}">{% endif %}
 
         <!-- Google Analytics -->
         {% if config.extra.google_analytics.enabled %}<script async src="https://www.googletagmanager.com/gtag/js?id={{ config.extra.google_analytics.id }}"></script>
