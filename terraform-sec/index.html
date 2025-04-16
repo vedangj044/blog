@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Vedang&#x27;s blog - Securing AWS using Terrascan</title>
+
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+        <!-- Enable responsiveness on mobile devices-->
+        <!-- viewport-fit=cover is to support iPhone X rounded corners and notch in landscape-->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+
+        <!-- Standard meta tags -->
+        <meta name="author" content="Vedang Joshi">
+        <meta name="description" content="Blog of Vedang Joshi">
+
+        <!-- Open Graph Tags -->
+        <meta property="og:site_name" content="Vedang's Blog">
+        <meta property="og:title" content="Blog of Vedang Joshi">
+        <meta property="og:url" content="https://vedangj044.github.io/blog/">
+        <meta property="og:description" content="Welcome to my blog. I write about Technology and Science.">
+        
+        <meta property="og:type" content="article">
+        <meta property="article:author" content="https://vedangj044.github.io/">
+
+        <!-- CSS -->
+        <link rel="stylesheet" href="https://vedangj044.github.io/blog/main.css">
+
+        <!-- Feeds -->
+        <link rel="alternate" type="application/rss+xml" title="RSS" href="https://vedangj044.github.io/blog/rss.xml">
+
+        <!-- Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-683TMZN24E"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-683TMZN24E');
+        </script>
+
+    </head>
+    
+    <body class="single">
+    
+
+    
+        <header class="header">
+            <nav class="nav">
+                
+                <p class="logo"><a href="https://vedangj044.github.io/blog">Vedang&#x27;s blog</a></p>
+                
+                <ul class="menu">
+
+                    
+                    <li>
+                        <a id = "theme-toggle" style="height: 100%; cursor: pointer;" >
+                            <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+                            <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        </a>
+                    </li> 
+                    
+                        <li><a target="_blank" href="https:&#x2F;&#x2F;vedangj044.github.io">Website</a></li>
+                    
+                    <script>
+                        // set initial state
+                        var button = document.getElementById("theme-toggle");
+                        var sun = document.getElementById("sun");
+                        var moon = document.getElementById("moon");
+                        var key = "dark";
+
+                        function dar() {
+                            sun.style.display = "none";
+                            moon.style.display = "block";
+                            document.body.classList.add("dark");
+                            localStorage.setItem(key, "true");
+                        }
+
+                        function li() {
+                            sun.style.display = "block";
+                            moon.style.display = "none";
+                            document.body.classList.remove("dark");
+                            localStorage.setItem(key, "false");
+                        }
+
+                        if (localStorage.getItem(key) === null) {
+                            li();
+                        }
+                        else if (localStorage.getItem(key) === "false") {
+                            li();
+                        }
+                        else {
+                            dar();
+                        }
+
+                        button.onclick = function() {
+                            if (localStorage.getItem(key) === "true") {
+                                li();
+                            }
+                            else {
+                                dar();
+                            }
+                        }
+                    </script>
+                    
+
+                </ul>
+            </nav>
+        </header>
+
+        <main class="main">
+            
+<article class="post-single">
+    <header class="post-header">
+        <h1 class="post-title">Securing AWS using Terrascan</h1>
+        <div class="post-meta">
+            <span class="post-author">
+                Author: Vedang Joshi
+            </span>
+            <br/>
+            <span class="post-date">Published: <time>June 27, 2023</time></span>
+            <span>&middot;</span>
+            <span class="post-reading-time">5 min read</span>
+        </div>
+    </header>
+    <div class="post-content"><p>Using Static Code Analysis to Minimize Security Risk on AWS with Terraform and Terrascan</p>
+<p>Developing software is a complex process. With each line of code, there is potential for error. Security risks, in particular, can be devastating, leading to data breaches, system downtime, and even monetary loss. To help mitigate these risks when deploying infrastructure using Terraform on AWS, we can utilize static code analysis. A critical tool in this process is <a href="https://runterrascan.io/docs/usage/">Terrascan</a>, which allows developers to automate the process of checking their Infrastructure as Code (IaC) for potential security vulnerabilities.</p>
+<h2 id="what-is-terrascan">What is Terrascan?</h2>
+<p>Terrascan is an open-source static code analysis tool that scans Terraform code for security vulnerabilities and compliance violations. Terrascan comes with pre-written policies that check for security best practices in your IaC code. It uses Rego, a policy-as-code language, to perform these checks.</p>
+<p>Terrascan has extensive support for AWS and other major cloud service providers, making it a highly versatile tool for cloud deployments.</p>
+<h2 id="what-policies-are-checked-by-terrascan">What Policies are Checked by Terrascan?</h2>
+<p>There are several crucial policies that Terrascan checks. Let's focus on the most important ones related to AWS:</p>
+<ol>
+<li>
+<p><strong>S3 Bucket Policies:</strong> It ensures that S3 buckets are not publicly accessible, which is crucial to preventing unauthorized access to stored data.</p>
+</li>
+<li>
+<p><strong>IAM Policies:</strong> It checks that minimal access policies are in place for your IAM roles, to avoid granting unnecessary permissions to entities.</p>
+</li>
+<li>
+<p><strong>Encryption Policies:</strong> It confirms that data at rest and in transit are encrypted, offering a necessary layer of security.</p>
+</li>
+<li>
+<p><strong>Logging and Monitoring Policies:</strong> It validates that AWS CloudTrail and CloudWatch are enabled, to monitor and record activities for security analysis.</p>
+</li>
+<li>
+<p><strong>Security Group Rules:</strong> It checks for overly permissive inbound and outbound rules in security groups, which could expose your resources to potential attacks.</p>
+</li>
+</ol>
+<h2 id="integrating-terrascan-as-a-pre-commit-hook">Integrating Terrascan as a Pre-commit Hook</h2>
+<p>Having static code analysis as a pre-commit hook is a best practice that can save you from pushing insecure code to the repository. Here are the steps to integrate Terrascan as a pre-commit hook:</p>
+<p><strong>Step 1:</strong> Install <code>pre-commit</code>. You can do so by running the following command:</p>
+<pre data-lang="bash" style="background-color:#2b303b;color:#6c7079;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#eb6772;">pip</span><span style="color:#abb2bf;"> install pre-commit
+</span></code></pre>
+<p><strong>Step 2:</strong> Create a <code>.pre-commit-config.yaml</code> file in the root of your repository and add the following:</p>
+<pre data-lang="yaml" style="background-color:#2b303b;color:#6c7079;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#eb6772;">repos</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">  - </span><span style="color:#eb6772;">repo</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">https://github.com/tenable/terrascan
+</span><span style="color:#abb2bf;">    </span><span style="color:#eb6772;">rev</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">v1.8.0  </span><span style="font-style:italic;color:#5f697a;"># Use the ref you want to point at
+</span><span style="color:#abb2bf;">    </span><span style="color:#eb6772;">hooks</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">      - </span><span style="color:#eb6772;">id</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">terrascan
+</span><span style="color:#abb2bf;">        </span><span style="color:#eb6772;">args</span><span style="color:#abb2bf;">: [</span><span style="color:#9acc76;">&#39;-f&#39;</span><span style="color:#abb2bf;">, </span><span style="color:#9acc76;">&#39;yaml&#39;</span><span style="color:#abb2bf;">, </span><span style="color:#9acc76;">&#39;-o&#39;</span><span style="color:#abb2bf;">, </span><span style="color:#9acc76;">&#39;results&#39;</span><span style="color:#abb2bf;">]
+</span></code></pre>
+<p>This configuration specifies that the Terrascan tool will be run before every commit, outputting the results in a YAML file.</p>
+<p><strong>Step 3:</strong> Install the pre-commit hook. Run the following command:</p>
+<pre data-lang="bash" style="background-color:#2b303b;color:#6c7079;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#eb6772;">pre-commit</span><span style="color:#abb2bf;"> install
+</span></code></pre>
+<p>Now, whenever you try to commit changes, Terrascan will automatically scan your Terraform code. If any violations are found, the commit will be blocked, and you'll need to fix the problems before the commit can proceed.</p>
+<p>Employing static code analysis with Terrascan in your Terraform code development process can significantly minimize the security risks when deploying resources on AWS. By integrating it as a pre-commit hook, you'll ensure that every line of code committed to your repository adheres to security best practices, thus providing robust security for your cloud infrastructure.</p>
+<h2 id="cutsom-policies">Cutsom policies</h2>
+<p>Here's how you can create custom policies in Terrascan:</p>
+<p><strong>Step 1: Define Conditions:</strong>
+Start by defining the conditions that will trigger a policy violation. These conditions are written in the Open Policy Agent's (OPA) policy-as-code language, Rego. For example, you might create a condition that checks if an AWS S3 bucket is publicly readable.</p>
+<p><strong>Step 2: Create a Rule:</strong>
+After defining your conditions, the next step is to create a rule. A rule in OPA is a named collection of conditions. The name of the rule is the policy violation that will be reported by Terrascan when the conditions of the rule are met.</p>
+<p><strong>Step 3: Package the Rule:</strong>
+The rule you've created now needs to be part of a package. A package in OPA is akin to a namespace, grouping related rules together. This makes managing your policies easier, especially when dealing with a large number of rules.</p>
+<p><strong>Step 4: Test the Policy:</strong>
+Before incorporating your custom policy into Terrascan, you should test it to make sure it works as expected. This can be done locally using OPA's <code>opa eval</code> command, which lets you evaluate your policy against sample data to verify its correctness.</p>
+<p><strong>Step 5: Load the Policy into Terrascan:</strong>
+Once you're satisfied with your custom policy, it's time to load it into Terrascan. This can be done through the <code>--policy</code> path command line argument when you run Terrascan. Alternatively, you can place your custom policies into a directory and set the <code>POLICY_PATH</code> environment variable to the directory's path.</p>
+<p>By following these steps, you can extend the capabilities of Terrascan with your custom policies, enabling more robust security checks that cater specifically to your organization's requirements.</p>
+<h3 id="some-usecases-that-require-custom-policies">Some usecases that require custom policies</h3>
+<p>Here are some scenarios where you might need to create custom policies:</p>
+<ol>
+<li>Validating the existence of DDoS prevention mechanisms, such as by assessing the request per second (RPS) limit on Kubernetes ingress.</li>
+<li>Ensuring that newly created resources adhere to appropriate tagging and naming conventions.</li>
+</ol>
+<p>In conclusion, utilizing Terrascan's static code analysis for your Terraform AWS deployments, along with the ability to craft custom policies, brings robust and tailored security to your cloud infrastructure. It's an indispensable tool for automating security best practices and ensuring compliance in your infrastructure-as-code development process. As always, Thanks for reading!</p>
+</div>
+    <footer class="post-footer">
+        
+        <ul class="post-tags">
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/security/">Security</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/terraform/">Terraform</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/devops/">DevOps</a></li>
+        
+        </ul>
+        
+    </footer>
+</article>
+
+        </main>
+
+        <footer class="footer">
+            <span>&copy; 2025 <a href="https://vedangj044.github.io/">Github</a></span>
+            <span>&middot;</span>
+            <span>Powered by <a href="https://www.getzola.org" rel="noopener" target="_blank">Zola</a>️</span>
+            <span>&middot;</span>
+            <span>Theme️ <a href="https://github.com/schoenenberg/zola-paper" rel="noopener" target="_blank">Zola-Paper</a></span>
+        </footer>
+    
+    </body>
+</html>

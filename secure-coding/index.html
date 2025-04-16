@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Vedang&#x27;s blog - Secure coding practices</title>
+
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+        <!-- Enable responsiveness on mobile devices-->
+        <!-- viewport-fit=cover is to support iPhone X rounded corners and notch in landscape-->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+
+        <!-- Standard meta tags -->
+        <meta name="author" content="Vedang Joshi">
+        <meta name="description" content="Blog of Vedang Joshi">
+
+        <!-- Open Graph Tags -->
+        <meta property="og:site_name" content="Vedang's Blog">
+        <meta property="og:title" content="Blog of Vedang Joshi">
+        <meta property="og:url" content="https://vedangj044.github.io/blog/">
+        <meta property="og:description" content="Welcome to my blog. I write about Technology and Science.">
+        
+        <meta property="og:type" content="article">
+        <meta property="article:author" content="https://vedangj044.github.io/">
+
+        <!-- CSS -->
+        <link rel="stylesheet" href="https://vedangj044.github.io/blog/main.css">
+
+        <!-- Feeds -->
+        <link rel="alternate" type="application/rss+xml" title="RSS" href="https://vedangj044.github.io/blog/rss.xml">
+
+        <!-- Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-683TMZN24E"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-683TMZN24E');
+        </script>
+
+    </head>
+    
+    <body class="single">
+    
+
+    
+        <header class="header">
+            <nav class="nav">
+                
+                <p class="logo"><a href="https://vedangj044.github.io/blog">Vedang&#x27;s blog</a></p>
+                
+                <ul class="menu">
+
+                    
+                    <li>
+                        <a id = "theme-toggle" style="height: 100%; cursor: pointer;" >
+                            <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+                            <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        </a>
+                    </li> 
+                    
+                        <li><a target="_blank" href="https:&#x2F;&#x2F;vedangj044.github.io">Website</a></li>
+                    
+                    <script>
+                        // set initial state
+                        var button = document.getElementById("theme-toggle");
+                        var sun = document.getElementById("sun");
+                        var moon = document.getElementById("moon");
+                        var key = "dark";
+
+                        function dar() {
+                            sun.style.display = "none";
+                            moon.style.display = "block";
+                            document.body.classList.add("dark");
+                            localStorage.setItem(key, "true");
+                        }
+
+                        function li() {
+                            sun.style.display = "block";
+                            moon.style.display = "none";
+                            document.body.classList.remove("dark");
+                            localStorage.setItem(key, "false");
+                        }
+
+                        if (localStorage.getItem(key) === null) {
+                            li();
+                        }
+                        else if (localStorage.getItem(key) === "false") {
+                            li();
+                        }
+                        else {
+                            dar();
+                        }
+
+                        button.onclick = function() {
+                            if (localStorage.getItem(key) === "true") {
+                                li();
+                            }
+                            else {
+                                dar();
+                            }
+                        }
+                    </script>
+                    
+
+                </ul>
+            </nav>
+        </header>
+
+        <main class="main">
+            
+<article class="post-single">
+    <header class="post-header">
+        <h1 class="post-title">Secure coding practices</h1>
+        <div class="post-meta">
+            <span class="post-author">
+                Author: Vedang Joshi
+            </span>
+            <br/>
+            <span class="post-date">Published: <time>October 26, 2022</time></span>
+            <span>&middot;</span>
+            <span class="post-reading-time">5 min read</span>
+        </div>
+    </header>
+    <div class="post-content"><img alt="tweets regarding major cyber attacks" src="https://user-images.githubusercontent.com/43697446/198199218-67db3563-0c9b-44df-b759-c39abd777bab.png">
+<p>Hello Everyone! we all have come across tweets like these - Security vulnerabilities being detected and exploited. What causes security vulnerabilities in the first places ? Can it be prevented ? and most importantly, what do we learn from these ?</p>
+<p>Security vulnerabilities occur when a program does something it isn’t meant to do - A bug. It was there all along, maybe in the code you didn’t even know existed. For hackers, it is an opportunity and they would surely take advantage of it.
+Here, I would discuss some best practices that avoid common kinds of security vulnerabilities.</p>
+<h2 id="common-pitfalls">Common pitfalls</h2>
+<h3 id="dynamically-executed-code">Dynamically executed code</h3>
+<p>If a program is taking input from the user and executing it without any sanitization, it is like serving the integrity of the application on a silver platter to the bad actors. In the case of python, the use of eval statements is highly discouraged. These types of attacks are commonly addressed as injection attacks. An attack could inject SQL statement, HTML, or Javascript which if executed on the server side gives the attackers full control. <a href="https://www.securecodewarrior.com/blog/what-is-log4j-log4shell">Log4j</a> was an example of code injection. XCKD sums this up in a humorous comic.</p>
+<p><img src="https://user-images.githubusercontent.com/43697446/198199425-76fcf1a5-cef6-4554-9051-338329cbedc3.png" alt="exploits_of_a_mom" /></p>
+<p>Developers need to make sure that there is no room for user input to get executed. Here user input can be input from the end user or even from another developer.</p>
+<p>SQL Injection can be avoided by using an ORM instead of writing raw queries. Mostly all popular ORMs come with built in sanitization features.</p>
+<p>Major Web frameworks like Django and Flask also come with their sanitization functions. This prevents potentially malicious HTML inputs.</p>
+<p>Other than this, Static application security testing ( SAST ) tools can also detect lines of code that execute a user input and flags them. Using a SAST check either on the local system or in the CI pipeline is recommended.</p>
+<h3 id="hardcoding-credentials">Hardcoding credentials</h3>
+<p>While building an application, it is a common requirement to fetch some data from an external API. It may be some payment gateway integration, cloud provider, or any other API. Generally, these APIs are authenticated and we need to specify the authentication key in the headers. While programming, developers often hardcode the credentials in the code itself. This becomes a serious issue when this code is pushed to a git repository because now the keys are visible to everybody who has access to the git repo. This problem amplifies when this git repo is public. Which means the keys are exposed to the entire world.</p>
+<p>Not only this practice is a blunder in security but it hinders the developer's productivity too. Once the code becomes a part of a container image and is pushed to production, it becomes difficult to track and replace the credentials if needed.</p>
+<p>It is quite easy to avoid this</p>
+<ol>
+<li>Passing the credentials as env variables solves this problem. Developers can create a .env file if the number of variables is large. This .env file should never be checked out to git.</li>
+<li>Implementing secret scanning in pre-commit hooks. This can make sure no credentials are hardcoded before every commit. Similarly, secrets scanning can be added as a CI stage as well.</li>
+</ol>
+<h3 id="parsing">Parsing</h3>
+<p>Developers often need to deal with XML and YAML files. The first step in using any of these files is to parse them. There are a few common attacks through these parsers.</p>
+<ul>
+<li>
+<p>XML parsing</p>
+<p>Python XML standard library warns the users that using the etree, DOM, xmlrpc is not secure. An attacker can create a <a href="https://en.wikipedia.org/wiki/Billion_laughs_attack">DOS-style attack</a>. This attack references a piece of data in the same file and doing it over and over increases the RAM usage exponentially. Thus crashing the server.</p>
+<p>An attacker can also take advantage of an XML parser trying to fetch and parse resources from an external URL. This can be used to circumvent firewalls.</p>
+<p>The use of defuseXML is recommended as a fix.</p>
+</li>
+<li>
+<p>YAML parsing</p>
+<p>Using the <code>yaml.load</code> method can be used to make system calls, thus leaving you wide open to attack.</p>
+<p>The use of <code>yaml.safe_load</code> is recommended as a fix.</p>
+</li>
+</ul>
+<h2 id="general-tips">General Tips</h2>
+<h3 id="updating-dependencies">Updating dependencies</h3>
+<p>Your python program surely uses one or the other libraries from PyPI. These libraries may contain some security vulnerabilities. If the library is maintained then these security vulnerabilities would be fixed in no time, once it is fixed it is our responsibility to update our dependencies to the proper version. Developers may find things breaking when a version upgrade on a dependency is done, but it is better than having a known vulnerability in your software.</p>
+<p>It is recommended that developers subscribe to the GitHub releases of the packages they use in their code and update the dependencies whenever a stable version is released.</p>
+<h3 id="trusting-opensource">Trusting opensource</h3>
+<p>No doubt, we all love open-source software, but while installing a package from PyPI for your project, we need to always verify that the library is well-maintained. Installing unknown or outdated packages can introduce security risks. Install either the popular libraries only or review the library before installing.</p>
+<p>That's all from my side.</p>
+<p>Thank You</p>
+</div>
+    <footer class="post-footer">
+        
+        <ul class="post-tags">
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/security/">Security</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/python/">Python</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/devops/">DevOps</a></li>
+        
+        </ul>
+        
+    </footer>
+</article>
+
+        </main>
+
+        <footer class="footer">
+            <span>&copy; 2025 <a href="https://vedangj044.github.io/">Github</a></span>
+            <span>&middot;</span>
+            <span>Powered by <a href="https://www.getzola.org" rel="noopener" target="_blank">Zola</a>️</span>
+            <span>&middot;</span>
+            <span>Theme️ <a href="https://github.com/schoenenberg/zola-paper" rel="noopener" target="_blank">Zola-Paper</a></span>
+        </footer>
+    
+    </body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Vedang&#x27;s blog - GSoC Phase 1</title>
+
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+        <!-- Enable responsiveness on mobile devices-->
+        <!-- viewport-fit=cover is to support iPhone X rounded corners and notch in landscape-->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+
+        <!-- Standard meta tags -->
+        <meta name="author" content="Vedang Joshi">
+        <meta name="description" content="Blog of Vedang Joshi">
+
+        <!-- Open Graph Tags -->
+        <meta property="og:site_name" content="Vedang's Blog">
+        <meta property="og:title" content="Blog of Vedang Joshi">
+        <meta property="og:url" content="https://vedangj044.github.io/blog/">
+        <meta property="og:description" content="Welcome to my blog. I write about Technology and Science.">
+        
+        <meta property="og:type" content="article">
+        <meta property="article:author" content="https://vedangj044.github.io/">
+
+        <!-- CSS -->
+        <link rel="stylesheet" href="https://vedangj044.github.io/blog/main.css">
+
+        <!-- Feeds -->
+        <link rel="alternate" type="application/rss+xml" title="RSS" href="https://vedangj044.github.io/blog/rss.xml">
+
+        <!-- Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-683TMZN24E"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-683TMZN24E');
+        </script>
+
+    </head>
+    
+    <body class="single">
+    
+
+    
+        <header class="header">
+            <nav class="nav">
+                
+                <p class="logo"><a href="https://vedangj044.github.io/blog">Vedang&#x27;s blog</a></p>
+                
+                <ul class="menu">
+
+                    
+                    <li>
+                        <a id = "theme-toggle" style="height: 100%; cursor: pointer;" >
+                            <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+                            <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        </a>
+                    </li> 
+                    
+                        <li><a target="_blank" href="https:&#x2F;&#x2F;vedangj044.github.io">Website</a></li>
+                    
+                    <script>
+                        // set initial state
+                        var button = document.getElementById("theme-toggle");
+                        var sun = document.getElementById("sun");
+                        var moon = document.getElementById("moon");
+                        var key = "dark";
+
+                        function dar() {
+                            sun.style.display = "none";
+                            moon.style.display = "block";
+                            document.body.classList.add("dark");
+                            localStorage.setItem(key, "true");
+                        }
+
+                        function li() {
+                            sun.style.display = "block";
+                            moon.style.display = "none";
+                            document.body.classList.remove("dark");
+                            localStorage.setItem(key, "false");
+                        }
+
+                        if (localStorage.getItem(key) === null) {
+                            li();
+                        }
+                        else if (localStorage.getItem(key) === "false") {
+                            li();
+                        }
+                        else {
+                            dar();
+                        }
+
+                        button.onclick = function() {
+                            if (localStorage.getItem(key) === "true") {
+                                li();
+                            }
+                            else {
+                                dar();
+                            }
+                        }
+                    </script>
+                    
+
+                </ul>
+            </nav>
+        </header>
+
+        <main class="main">
+            
+<article class="post-single">
+    <header class="post-header">
+        <h1 class="post-title">GSoC Phase 1</h1>
+        <div class="post-meta">
+            <span class="post-author">
+                Author: Vedang Joshi
+            </span>
+            <br/>
+            <span class="post-date">Published: <time>July 17, 2021</time></span>
+            <span>&middot;</span>
+            <span class="post-reading-time">5 min read</span>
+        </div>
+    </header>
+    <div class="post-content"><p>In the past month, I worked on a feature in <a href="https://github.com/drogue-iot/drg">DRG</a>, which enables a user to create and add Trust anchors to the application object, and use them to sign the device certificates.</p>
+<h3 id="implementation">Implementation</h3>
+<p>Drogue cloud tries to make it as easy as possible for devices to connect to the cloud. In today's IoT world, a convenient and secure solution to authenticate devices is to use digitally signed certificates. We first need to obtain a public and private key pair which can be generated by algorithms like RSA, DSA, or ECDSA. An <a href="https://sectigo.com/resource-library/what-is-x509-certificate">X.509 certificate</a> is the envelope that holds a public key along with some other information about the usage and ownership of the certificate and the issuer. In Drogue IoT, we have applications (aka apps), which are containers for devices. The flow for X.509 authentication looks like this:</p>
+<ul>
+<li>We create a new key for an application. This is the root CA key, it needs to be stored securely. Let's name it - app key.</li>
+<li>We create a certificate and sign it using the app key. This is a self-signed certificate, and it would work are the Trust anchor or root CA.</li>
+<li>We store this certificate in the application object on the cloud side.</li>
+</ul>
+<p>Now, we have a trust anchor set up and ready to sign our device certificates. To do that:</p>
+<ul>
+<li>We download the Trust anchor certificate from the application object. This helps us add "issuer" information on the device certificate and also verify the private key.</li>
+<li>We take the app key as input.</li>
+<li>Then, we create a CSR i.e certificate signing request and sign it with the app key to create the device certificate.</li>
+<li>We can now export the certificate and private key for the device either to a file or to the terminal.</li>
+</ul>
+<p>This concludes the flow, now we can use this device certificate and its key to authenticate and send data to the drogue cloud.
+This may sound like a lot to do, especially if you are not familiar with tools like <a href="https://www.openssl.org/">OpenSSL</a>, don't worry, DRG is here to rescue. DRG abstracts this entire process in not more than 2 commands.</p>
+<ul>
+<li><code>drg trust create</code>: Creates an app key, Trust anchor, and adds it to the application object.</li>
+<li><code>drg trust enroll</code>: Uses the app key to sign and export device certificate and key.</li>
+</ul>
+<p>We have focused on having a pure rust implementation for all the cryptography we have used here. <a href="https://crates.io/crates/rcgen"><code>rcgen</code></a> crate is just amazing and makes handling X.509 certificates very easy. Currently, We using the ECDSA algorithm to generate the key pairs, this is the default for the rcgen crate, but we are working on generating and using RSA key pairs as well.</p>
+<p>While implementing this, I started by creating a script that uses OpenSSL to generate certificates and authenticate devices. For a few days, I would create a Trust Anchor correctly but couldn't authenticate any device. On sharing this with mentors, we discovered that it is because of a broken dependency but it got fixed pretty quickly. Once, my bash script worked successfully, I knew exactly what I had to do with <code>rcgen</code>. The majority of the work on this feature has been done in this <a href="https://github.com/drogue-iot/drg/pull/81">PR</a>. I am happy to say it is now merged to the master branch.</p>
+<h3 id="here-s-a-quick-demo">Here's a quick demo</h3>
+<p>To use X.509 authentication, please follow the following steps. Assuming that you are logged into drogue cloud if not use <code>drg login &lt;drogue-cloud-endpoint&gt;</code>.</p>
+<ul>
+<li><code>drg create app &lt;app_name&gt;</code> - This commands create an application.</li>
+<li><code>drg create device &lt;device_name&gt; --app &lt;app_name&gt; --cert</code> - This command creates a new device. Notice, the <code>--cert</code> flag used here, it formats the device name according to what is needed by Drogue cloud for certificate authentication.</li>
+<li><code>drg trust create &lt;app_name&gt; --key-output &lt;app-key-filename.pem&gt;</code> - This command generates a new key and a certificate, uses the key to sign the cert, finally uploads the certificate to the application object, and writes the key to the file. Optionally, you may specify <code>--days &lt;no_of_days&gt;</code> argument, for the validity, by default it is 365.</li>
+<li><code>drg trust enroll &lt;device_name&gt; --app &lt;app_name&gt; --ca-key &lt;app_key_filename.pem&gt; --key-output &lt;deivce_key_filename.pem&gt; --out &lt;deivce_cert_filename.pem&gt;</code> - This commands uses the app key to sign a newly generated device certificate + key. This certificate and key are exported to the respective files.</li>
+</ul>
+<p>Now, we can use this device certificate and key to authenticate the devices. An example to do the same over MQTT using the <a href="https://github.com/hivemq/mqtt-cli/releases/tag/v4.6.3">MQTT-CLI (v4.6.2)</a> tool would look like.</p>
+<p><code>mqtt pub -h &lt;mqtt_host&gt; -p 443 --cert device-cert.pem --key device-key.pem</code></p>
+<h3 id="to-do">To Do</h3>
+<p>This implementation has many things to improve, some of them are:</p>
+<ul>
+<li>RSA Key Pair, This is currently "work in progress".</li>
+<li>Using existing private keys and existing certificates, in that case, DRG works only as a medium to upload them to the cloud.</li>
+<li>Trying to use it with a key store solution like <a href="https://devopsheaven.com/ssh/security/lastpass/devops/2018/06/13/ssh-lastpass-cli.html">LastPass</a>, could be a good topic for a blog post.</li>
+<li>Improving the implementation.</li>
+</ul>
+<h3 id="thank-you">Thank you</h3>
+<p>Thanks to <a href="https://github.com/jbtrystram">@jbtrystram</a>, <a href="https://github.com/ctron">@ctron</a> and everybody in the community for helping me and as always Thanks for reading.</p>
+</div>
+    <footer class="post-footer">
+        
+        <ul class="post-tags">
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/gsoc/">GSOC</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/drogueiot/">DrogueIoT</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/iot/">IoT</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/github/">Github</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/open-source/">Open source</a></li>
+        
+        </ul>
+        
+    </footer>
+</article>
+
+        </main>
+
+        <footer class="footer">
+            <span>&copy; 2025 <a href="https://vedangj044.github.io/">Github</a></span>
+            <span>&middot;</span>
+            <span>Powered by <a href="https://www.getzola.org" rel="noopener" target="_blank">Zola</a>️</span>
+            <span>&middot;</span>
+            <span>Theme️ <a href="https://github.com/schoenenberg/zola-paper" rel="noopener" target="_blank">Zola-Paper</a></span>
+        </footer>
+    
+    </body>
+</html>

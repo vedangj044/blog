@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Vedang&#x27;s blog - GSOC, Drogue IoT &amp; the Community</title>
+
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+        <!-- Enable responsiveness on mobile devices-->
+        <!-- viewport-fit=cover is to support iPhone X rounded corners and notch in landscape-->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+
+        <!-- Standard meta tags -->
+        <meta name="author" content="Vedang Joshi">
+        <meta name="description" content="Blog of Vedang Joshi">
+
+        <!-- Open Graph Tags -->
+        <meta property="og:site_name" content="Vedang's Blog">
+        <meta property="og:title" content="Blog of Vedang Joshi">
+        <meta property="og:url" content="https://vedangj044.github.io/blog/">
+        <meta property="og:description" content="Welcome to my blog. I write about Technology and Science.">
+        
+        <meta property="og:type" content="article">
+        <meta property="article:author" content="https://vedangj044.github.io/">
+
+        <!-- CSS -->
+        <link rel="stylesheet" href="https://vedangj044.github.io/blog/main.css">
+
+        <!-- Feeds -->
+        <link rel="alternate" type="application/rss+xml" title="RSS" href="https://vedangj044.github.io/blog/rss.xml">
+
+        <!-- Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-683TMZN24E"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-683TMZN24E');
+        </script>
+
+    </head>
+    
+    <body class="single">
+    
+
+    
+        <header class="header">
+            <nav class="nav">
+                
+                <p class="logo"><a href="https://vedangj044.github.io/blog">Vedang&#x27;s blog</a></p>
+                
+                <ul class="menu">
+
+                    
+                    <li>
+                        <a id = "theme-toggle" style="height: 100%; cursor: pointer;" >
+                            <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+                            <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        </a>
+                    </li> 
+                    
+                        <li><a target="_blank" href="https:&#x2F;&#x2F;vedangj044.github.io">Website</a></li>
+                    
+                    <script>
+                        // set initial state
+                        var button = document.getElementById("theme-toggle");
+                        var sun = document.getElementById("sun");
+                        var moon = document.getElementById("moon");
+                        var key = "dark";
+
+                        function dar() {
+                            sun.style.display = "none";
+                            moon.style.display = "block";
+                            document.body.classList.add("dark");
+                            localStorage.setItem(key, "true");
+                        }
+
+                        function li() {
+                            sun.style.display = "block";
+                            moon.style.display = "none";
+                            document.body.classList.remove("dark");
+                            localStorage.setItem(key, "false");
+                        }
+
+                        if (localStorage.getItem(key) === null) {
+                            li();
+                        }
+                        else if (localStorage.getItem(key) === "false") {
+                            li();
+                        }
+                        else {
+                            dar();
+                        }
+
+                        button.onclick = function() {
+                            if (localStorage.getItem(key) === "true") {
+                                li();
+                            }
+                            else {
+                                dar();
+                            }
+                        }
+                    </script>
+                    
+
+                </ul>
+            </nav>
+        </header>
+
+        <main class="main">
+            
+<article class="post-single">
+    <header class="post-header">
+        <h1 class="post-title">GSOC, Drogue IoT &amp; the Community</h1>
+        <div class="post-meta">
+            <span class="post-author">
+                Author: Vedang Joshi
+            </span>
+            <br/>
+            <span class="post-date">Published: <time>June  1, 2021</time></span>
+            <span>&middot;</span>
+            <span class="post-reading-time">4 min read</span>
+        </div>
+    </header>
+    <div class="post-content"><p>This year, I got an opportunity to work as a Google summer of code student at <a href="https://github.com/drogue-iot">Drogue IoT</a>, which is a part of the JBoss community ( Red Hat or IBM ).</p>
+<h3 id="understanding-the-project">Understanding the project</h3>
+<p>While looking for organizations on the GSOC website, I came across the idea list of the JBoss community. It had only 3 ideas all from an organization named Drogue IoT. I read those, but barely comprehended any, but I was curious so I went to their Github, blog, and matrix channel. To help myself understand what their project is, I started reading some of their earliest <a href="https://blog.drogue.io/first-steps-in-iot/">blogs</a>. I read that, and one line just clicked me, which was</p>
+<blockquote>
+<p>"Plus, given it's a known problem domain with at least one known solution to me, I can concentrate on the implementation, not on the specification and design."</p>
+</blockquote>
+<p>So, It's okay to do everything by hand when we have one device. But we can't do this at scale. There needs to be a system that sits in between devices and applications, to handle everything, from configuring devices to sending them commands. This is what  Drogue Cloud does,</p>
+<blockquote>
+<p>Device &lt;-&gt; Drogue Cloud &lt;-&gt; Applications.</p>
+</blockquote>
+<p>I loved this idea. Something more fascinating was the tech stack - Rust, Knative, Kafka, etc. I introduced myself on the community channel. I worked to understand each component of the tech stack. I started to play around and learn Rust, the best resource to do so is undoubtedly <a href="https://doc.rust-lang.org/book/">The Rust Book</a>. Everything was new to me, so I was extremely happy to get to know so much.</p>
+<p>Drogue IoT also focuses on the device side of things. Drogue device brings reusable components to the embedded side, this is done by an async actor framework written in Rust. I don't understand much of it but I want to learn more and contribute to it at some point, maybe after GSOC. ;-)</p>
+<h3 id="community-bonding-and-contributions">Community bonding and contributions</h3>
+<p>When I came across this organization around mid-January, I was interested in a "Hey Rodney" project, which is based on using voice commands to control Kubernetes. I researched about it but soon my interest faded. I came across a repository named <a href="https://github.com/drogue-iot/drg">DRG</a>. It is a command-line client to communicate with Drogue Cloud API, which helps us manage devices and apps. I discovered some issues which I could solve, so I started right away.</p>
+<p>I love the community and the people at the organization. Everyone is immensely experienced, and an inspiration. I think it is a privilege to get an opportunity to work with such amazing people, that too sitting at home.</p>
+<p>I contributed to some patches in DRG, working with Jean-Baptiste Trystram. He was very supportive and guided me with my PRs.  I think this experience is larger and better than any internship I may have got, and this is the beauty of Open-source.</p>
+<p>I look forward to contributing and giving my best in the GSOC period and later too.</p>
+<h3 id="my-project">My project</h3>
+<p>I would write a separate blog entirely focused on my project, but here is a little glimpse of it. My project is about facilitating a DRG user with the ability to create X.509 certificates for a device, and a Trust Anchor ( root CA ) for the apps.</p>
+<blockquote>
+<p>Apps: Applications are isolated containers for a collection of devices.</p>
+</blockquote>
+<blockquote>
+<p>Devices: Devices ideally map to a physical device, and are owned by exactly one application.</p>
+</blockquote>
+<p>Now, these devices can be authenticated using Username and password combinations, but it is not a good idea to do this at scale. The solution lies in the trust anchor flow.
+An app ( which owns the device ) has its root certificate and a private key. This key is used to sign the certificate flashed on the device. Whenever the device connects, it presents its certificate which is cryptographically verified with the App's public key.</p>
+<p>This helps establish a One-to-Many mapping and provides a secure authentication mechanism for any number of devices.</p>
+<p>Drogue cloud already has the support for X.509 certs. DRG can abstract away many parts of this process. So, this is what we have to do.</p>
+<p>More blog to come on this topic, and as always</p>
+<p>Thanks for reading.</p>
+</div>
+    <footer class="post-footer">
+        
+        <ul class="post-tags">
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/gsoc/">GSOC</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/drogueiot/">DrogueIoT</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/iot/">IoT</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/github/">Github</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/open-source/">Open source</a></li>
+        
+        </ul>
+        
+    </footer>
+</article>
+
+        </main>
+
+        <footer class="footer">
+            <span>&copy; 2025 <a href="https://vedangj044.github.io/">Github</a></span>
+            <span>&middot;</span>
+            <span>Powered by <a href="https://www.getzola.org" rel="noopener" target="_blank">Zola</a>️</span>
+            <span>&middot;</span>
+            <span>Theme️ <a href="https://github.com/schoenenberg/zola-paper" rel="noopener" target="_blank">Zola-Paper</a></span>
+        </footer>
+    
+    </body>
+</html>

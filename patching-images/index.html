@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Vedang&#x27;s blog - How to reduce the time it takes to patch vulnerabilities?</title>
+
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+        <!-- Enable responsiveness on mobile devices-->
+        <!-- viewport-fit=cover is to support iPhone X rounded corners and notch in landscape-->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+
+        <!-- Standard meta tags -->
+        <meta name="author" content="Vedang Joshi">
+        <meta name="description" content="Blog of Vedang Joshi">
+
+        <!-- Open Graph Tags -->
+        <meta property="og:site_name" content="Vedang's Blog">
+        <meta property="og:title" content="Blog of Vedang Joshi">
+        <meta property="og:url" content="https://vedangj044.github.io/blog/">
+        <meta property="og:description" content="Welcome to my blog. I write about Technology and Science.">
+        
+        <meta property="og:type" content="article">
+        <meta property="article:author" content="https://vedangj044.github.io/">
+
+        <!-- CSS -->
+        <link rel="stylesheet" href="https://vedangj044.github.io/blog/main.css">
+
+        <!-- Feeds -->
+        <link rel="alternate" type="application/rss+xml" title="RSS" href="https://vedangj044.github.io/blog/rss.xml">
+
+        <!-- Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-683TMZN24E"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-683TMZN24E');
+        </script>
+
+    </head>
+    
+    <body class="single">
+    
+
+    
+        <header class="header">
+            <nav class="nav">
+                
+                <p class="logo"><a href="https://vedangj044.github.io/blog">Vedang&#x27;s blog</a></p>
+                
+                <ul class="menu">
+
+                    
+                    <li>
+                        <a id = "theme-toggle" style="height: 100%; cursor: pointer;" >
+                            <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+                            <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        </a>
+                    </li> 
+                    
+                        <li><a target="_blank" href="https:&#x2F;&#x2F;vedangj044.github.io">Website</a></li>
+                    
+                    <script>
+                        // set initial state
+                        var button = document.getElementById("theme-toggle");
+                        var sun = document.getElementById("sun");
+                        var moon = document.getElementById("moon");
+                        var key = "dark";
+
+                        function dar() {
+                            sun.style.display = "none";
+                            moon.style.display = "block";
+                            document.body.classList.add("dark");
+                            localStorage.setItem(key, "true");
+                        }
+
+                        function li() {
+                            sun.style.display = "block";
+                            moon.style.display = "none";
+                            document.body.classList.remove("dark");
+                            localStorage.setItem(key, "false");
+                        }
+
+                        if (localStorage.getItem(key) === null) {
+                            li();
+                        }
+                        else if (localStorage.getItem(key) === "false") {
+                            li();
+                        }
+                        else {
+                            dar();
+                        }
+
+                        button.onclick = function() {
+                            if (localStorage.getItem(key) === "true") {
+                                li();
+                            }
+                            else {
+                                dar();
+                            }
+                        }
+                    </script>
+                    
+
+                </ul>
+            </nav>
+        </header>
+
+        <main class="main">
+            
+<article class="post-single">
+    <header class="post-header">
+        <h1 class="post-title">How to reduce the time it takes to patch vulnerabilities?</h1>
+        <div class="post-meta">
+            <span class="post-author">
+                Author: Vedang Joshi
+            </span>
+            <br/>
+            <span class="post-date">Published: <time>October 12, 2023</time></span>
+            <span>&middot;</span>
+            <span class="post-reading-time">5 min read</span>
+        </div>
+    </header>
+    <div class="post-content"><p>"Patch for CVE-2023-12345 that affected py-cool library from version v1.3 to v2.6 was released - v2.7" mentioned the release note of py-cool library on GitHub.</p>
+<p>This statement can have two distinct reactions by all the people using py-cool. For a few teams, it happens to be a sigh of relief, as they can now see their CI colored green, while for a few other teams, it could just be a blip in the ocean - one more patch, one more vulnerability. What differentiates both these teams? which one is the better state to be in? and how can we go from being the second team to the first? Let's explore this.</p>
+<p>A lot of what I am going to share in this article is just the elaboration of the following 2 words:
+PROACTIVE MAINTAINCE. Yes, that's it. If you already understand where we are headed, you can go back and sip your sangria.</p>
+<p>Using third-party libraries is essential to software development. The important point is to always consider the tradeoff between the functionality the library offers vs. its maintenance overhead. This is our first key point:</p>
+<ul>
+<li>Choose Dependencies Wisely:
+<ul>
+<li><strong>Verify the Source</strong>: Ensure that the source of your dependencies is reputable and reliable. Trustworthy sources are less likely to introduce vulnerabilities or abandon their projects.</li>
+<li><strong>Verify Maintainability</strong>: Assess the project's maintainability by checking the frequency of updates and the responsiveness of maintainers to issues and pull requests.</li>
+<li><strong>Consider Overhead</strong>: Every dependency adds complexity and potential maintenance overhead. Whenever possible, avoid dependencies that aren't critical to your project's functionality.</li>
+</ul>
+</li>
+</ul>
+<p>Once you have decided to go ahead and use the library. You need to constantly listen to what the maintainers have to say.</p>
+<ul>
+<li>Communicate with the Community
+<ul>
+<li><strong>Engage with the Community</strong>: Dependencies with active communities are often more reliable. Interact with community members, ask questions, and provide feedback.</li>
+<li><strong>Subscribe to Releases</strong>: Stay informed about updates by subscribing to dependency releases. Regular updates can include critical security fixes and new features.</li>
+<li><strong>Changelogs</strong>: Pay attention to changelogs to understand what changes have been made in each update. This information can help you assess the impact of updates on your project.</li>
+<li><strong>Direct Communication</strong>: Don't hesitate to communicate directly with dependency maintainers. Building a rapport can be invaluable when troubleshooting issues or requesting assistance.</li>
+</ul>
+</li>
+</ul>
+<p>Now that you know who is writing the code you use. You need to stay updated with the new features and patches they are releasing.</p>
+<ul>
+<li>Plan Regular Dependency Reviews
+<ul>
+<li><strong>Set a Schedule</strong>: Establish a routine for dependency reviews, aiming to conduct them at least every two weeks. Consistency is key to managing dependencies effectively.</li>
+<li><strong>Update Direct Dependencies</strong>: Prioritize updating direct dependencies as they directly impact your project's functionality. Pay attention to deprecation warnings or compatibility issues.</li>
+<li><strong>Address Backlogs</strong>: Don't let dependency updates accumulate. Tackling a backlog can be time-consuming and compounding, leading to increased risk.</li>
+</ul>
+</li>
+</ul>
+<p>While these are libraries that you introduced intentionally, there are tons of libraries working in the background. Docker, as we all know, does a great job and packaging these all the way to the kernel level. This ability of docker can be of great help, it allows us to use just what is required.</p>
+<ul>
+<li>Reduce Clutter in Docker Images
+<ul>
+<li><strong>Minimal Golden Images</strong>: Start with minimal golden images as the base for your containers. These lightweight images minimize the attack surface.</li>
+<li><strong>Trim Dependencies</strong>: Modify your golden images to include only the dependencies required by your application. Reducing the number of dependencies can enhance security and resource efficiency. For example, use <code>--no-install-recommends</code> with <code>apt-get</code> in Debian-based images to avoid installing unnecessary packages.</li>
+</ul>
+</li>
+</ul>
+<p>While you do your best, there would still be a good chance that you have to keep support for outdated software. For example - You may be supporting a new version of a database but other microservices are still on the old versions, thus you can't update. The best thing to do here is to mark all the code that would be deprecated and assign alternatives to each.</p>
+<ul>
+<li>Separate Outdated Code from Your Core
+<ul>
+<li><strong>Modular Approach</strong>: Maintain outdated or deprecated code as separate modules or packages. This allows you to update or discard them more easily when dependencies require changes.</li>
+</ul>
+</li>
+</ul>
+<p>Finally, testing is an investment you need to make</p>
+<ul>
+<li>End-to-End Tests are Your Best Friends
+<ul>
+<li><strong>Test Coverage</strong>: Develop E2E tests that cover critical aspects of your application. These tests act as a safety net to catch issues caused by dependency updates.</li>
+<li><strong>Automate Testing</strong>: Automate your E2E tests and integrate them into your continuous integration (CI) pipeline. Automated testing ensures that tests are consistently executed.</li>
+</ul>
+</li>
+</ul>
+<p>In conclusion, We need to understand that software engineering is not a technical problem, it rather is a socio-technical problem. As developers, we can't afford to overlook the social aspect. People leaving the organization, new people joining, dependencies being maintained, dependencies being archived - These are not rare events, we need to make our products resilient to them.</p>
+<p>The above steps are elementary and an initiation of good processes. Adhering to them can surely help us obviate vulnerabilities and reduce the time to patch them. Feel free to share what you think about the same, and as always</p>
+<p>Thanks for reading!</p>
+</div>
+    <footer class="post-footer">
+        
+        <ul class="post-tags">
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/security/">Security</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/python/">Python</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/devops/">DevOps</a></li>
+        
+        </ul>
+        
+    </footer>
+</article>
+
+        </main>
+
+        <footer class="footer">
+            <span>&copy; 2025 <a href="https://vedangj044.github.io/">Github</a></span>
+            <span>&middot;</span>
+            <span>Powered by <a href="https://www.getzola.org" rel="noopener" target="_blank">Zola</a>️</span>
+            <span>&middot;</span>
+            <span>Theme️ <a href="https://github.com/schoenenberg/zola-paper" rel="noopener" target="_blank">Zola-Paper</a></span>
+        </footer>
+    
+    </body>
+</html>

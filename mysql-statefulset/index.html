@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Vedang&#x27;s blog - MySQL on Statefulsets</title>
+
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+        <!-- Enable responsiveness on mobile devices-->
+        <!-- viewport-fit=cover is to support iPhone X rounded corners and notch in landscape-->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+
+        <!-- Standard meta tags -->
+        <meta name="author" content="Vedang Joshi">
+        <meta name="description" content="Blog of Vedang Joshi">
+
+        <!-- Open Graph Tags -->
+        <meta property="og:site_name" content="Vedang's Blog">
+        <meta property="og:title" content="Blog of Vedang Joshi">
+        <meta property="og:url" content="https://vedangj044.github.io/blog/">
+        <meta property="og:description" content="Welcome to my blog. I write about Technology and Science.">
+        
+        <meta property="og:type" content="article">
+        <meta property="article:author" content="https://vedangj044.github.io/">
+
+        <!-- CSS -->
+        <link rel="stylesheet" href="https://vedangj044.github.io/blog/main.css">
+
+        <!-- Feeds -->
+        <link rel="alternate" type="application/rss+xml" title="RSS" href="https://vedangj044.github.io/blog/rss.xml">
+
+        <!-- Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-683TMZN24E"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-683TMZN24E');
+        </script>
+
+    </head>
+    
+    <body class="single">
+    
+
+    
+        <header class="header">
+            <nav class="nav">
+                
+                <p class="logo"><a href="https://vedangj044.github.io/blog">Vedang&#x27;s blog</a></p>
+                
+                <ul class="menu">
+
+                    
+                    <li>
+                        <a id = "theme-toggle" style="height: 100%; cursor: pointer;" >
+                            <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+                            <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        </a>
+                    </li> 
+                    
+                        <li><a target="_blank" href="https:&#x2F;&#x2F;vedangj044.github.io">Website</a></li>
+                    
+                    <script>
+                        // set initial state
+                        var button = document.getElementById("theme-toggle");
+                        var sun = document.getElementById("sun");
+                        var moon = document.getElementById("moon");
+                        var key = "dark";
+
+                        function dar() {
+                            sun.style.display = "none";
+                            moon.style.display = "block";
+                            document.body.classList.add("dark");
+                            localStorage.setItem(key, "true");
+                        }
+
+                        function li() {
+                            sun.style.display = "block";
+                            moon.style.display = "none";
+                            document.body.classList.remove("dark");
+                            localStorage.setItem(key, "false");
+                        }
+
+                        if (localStorage.getItem(key) === null) {
+                            li();
+                        }
+                        else if (localStorage.getItem(key) === "false") {
+                            li();
+                        }
+                        else {
+                            dar();
+                        }
+
+                        button.onclick = function() {
+                            if (localStorage.getItem(key) === "true") {
+                                li();
+                            }
+                            else {
+                                dar();
+                            }
+                        }
+                    </script>
+                    
+
+                </ul>
+            </nav>
+        </header>
+
+        <main class="main">
+            
+<article class="post-single">
+    <header class="post-header">
+        <h1 class="post-title">MySQL on Statefulsets</h1>
+        <div class="post-meta">
+            <span class="post-author">
+                Author: Vedang Joshi
+            </span>
+            <br/>
+            <span class="post-date">Published: <time>April  4, 2025</time></span>
+            <span>&middot;</span>
+            <span class="post-reading-time">3 min read</span>
+        </div>
+    </header>
+    <div class="post-content"><p>The following kubernetes documentation and examples are outdated with the recent mysql version<br />
+https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/</p>
+<p>So I took it upon myself to run the latest MySQL version with 2 reader replicas and 1 write replica. In this post, I'll walk you through my approach step-by-step, explaining how I managed to set up a MySQL cluster using Kubernetes StatefulSets. Grab your favorite cup of coffee, and let’s dive in!</p>
+<hr />
+<h3 id="the-overall-approach">The Overall Approach</h3>
+<p>Here’s the quick rundown of what I did:</p>
+<ol>
+<li>
+<p><strong>ConfigMap Magic:</strong><br />
+I started by creating a ConfigMap that bundles two key scripts:</p>
+<ul>
+<li><strong><code>init-master.sh</code></strong>: This script configures the master node by setting up replication parameters.</li>
+<li><strong><code>init-slave.sh</code></strong>: This script is designed for the slave nodes, ensuring they connect and replicate from the master.</li>
+</ul>
+<p>These scripts are vital as they initialize the replication setup for MySQL.</p>
+</li>
+<li>
+<p><strong>StatefulSet Setup:</strong><br />
+The heart of the deployment is a StatefulSet, which I configured to handle both the master and slave roles based on the pod hostname.</p>
+<ul>
+<li>
+<p><strong>Init Container:</strong><br />
+Before the main containers kick in, an init container checks the hostname. If it’s the first pod (i.e., hostname ends with <code>-0</code>), it’s designated as the master; otherwise, it’s recognized as a slave. It then copies the appropriate script (either <code>init-master.sh</code> or <code>init-slave.sh</code>) from the ConfigMap.</p>
+</li>
+<li>
+<p><strong>Main &amp; Sidecar Containers:</strong></p>
+<ul>
+<li>
+<p><strong>Main Container:</strong> Runs MySQL 8.0 as expected.</p>
+</li>
+<li>
+<p><strong>Sidecar Container:</strong> Executes the copied script.</p>
+<p><strong>Note:</strong> You can’t merge the functionality of an init container with a sidecar because the sidecar has to run <em>after</em> MySQL is fully up and running. This separation ensures the scripts execute at the appropriate time for proper replication setup.</p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><strong>Service Configuration:</strong><br />
+Once the StatefulSet is up, I created two kinds of services:</p>
+<ul>
+<li><strong>Headless Service:</strong><br />
+This service lets you connect directly to any container. Specifically, I use it to connect to the master node via <code>mysql-svc-0</code>.</li>
+<li><strong>Replica Service:</strong><br />
+With a label selector of <code>replica</code>, this service is tailored to connect exclusively to the reader nodes.</li>
+</ul>
+</li>
+<li>
+<p><strong>Labeling the Readers:</strong><br />
+The final step was to apply specific labels to the two reader nodes. This labeling makes it easy to differentiate between the master and the replicas when routing read and write traffic.</p>
+</li>
+</ol>
+<hr />
+<h3 id="putting-it-all-together">Putting It All Together</h3>
+<p>Below is a snippet where you’d copy and paste your YAML files:</p>
+<pre data-lang="yaml" style="background-color:#2b303b;color:#6c7079;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="font-style:italic;color:#5f697a;"># - ConfigMap with init-master.sh and init-slave.sh
+</span><span style="color:#eb6772;">apiVersion</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">v1
+</span><span style="color:#eb6772;">kind</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">ConfigMap
+</span><span style="color:#eb6772;">metadata</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql-config
+</span><span style="color:#eb6772;">data</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">master.cnf</span><span style="color:#abb2bf;">: </span><span style="color:#cd74e8;">|
+</span><span style="color:#9acc76;">    [mysqld]
+</span><span style="color:#9acc76;">    log-bin=mysql-bin
+</span><span style="color:#9acc76;">    binlog-format=ROW
+</span><span style="color:#9acc76;">    server-id=1
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">slave.cnf</span><span style="color:#abb2bf;">: </span><span style="color:#cd74e8;">|
+</span><span style="color:#9acc76;">    [mysqld]
+</span><span style="color:#9acc76;">    server-id=2
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">init-master.sh</span><span style="color:#abb2bf;">: </span><span style="color:#cd74e8;">|
+</span><span style="color:#9acc76;">    #!/bin/bash
+</span><span style="color:#9acc76;">    set -ex
+</span><span style="color:#9acc76;">    echo &quot;Creating replication user...&quot;
+</span><span style="color:#9acc76;">    mysql -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD} &lt;&lt;EOF
+</span><span style="color:#9acc76;">    CREATE USER IF NOT EXISTS &#39;replication&#39;@&#39;%&#39;
+</span><span style="color:#9acc76;">    IDENTIFIED WITH mysql_native_password BY &#39;repl_password&#39;;
+</span><span style="color:#9acc76;">    GRANT REPLICATION SLAVE ON *.* TO &#39;replication&#39;@&#39;%&#39;;
+</span><span style="color:#9acc76;">    FLUSH PRIVILEGES;
+</span><span style="color:#9acc76;">    EOF
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">init-slave.sh</span><span style="color:#abb2bf;">: </span><span style="color:#cd74e8;">|
+</span><span style="color:#9acc76;">    #!/bin/bash
+</span><span style="color:#9acc76;">    set -ex
+</span><span style="color:#9acc76;">    echo &quot;Waiting for master to be ready...&quot;
+</span><span style="color:#9acc76;">    until mysql -h 127.0.0.1 -h mysql-0.mysql -u root -p${MYSQL_ROOT_PASSWORD} \
+</span><span style="color:#9acc76;">-e &quot;SELECT 1&quot;; do
+</span><span style="color:#abb2bf;">      </span><span style="color:#9acc76;">echo &quot;Master is not ready yet...&quot;
+</span><span style="color:#abb2bf;">      </span><span style="color:#9acc76;">sleep 3
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">done
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">echo &quot;Getting master position...&quot;
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">MASTER_STATUS=$(mysql -h mysql-0.mysql -u root -p${MYSQL_ROOT_PASSWORD} \
+</span><span style="color:#9acc76;">-e &quot;SHOW MASTER STATUS&quot; --skip-column-names)
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">MASTER_LOG_FILE=$(echo $MASTER_STATUS | cut -f 1 -d &#39; &#39;)
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">MASTER_LOG_POS=$(echo $MASTER_STATUS | cut -f 2 -d &#39; &#39;)
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">echo &quot;Stopping replica IO thread if running...&quot;
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">mysql -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD} \
+</span><span style="color:#9acc76;">-e &quot;STOP REPLICA IO_THREAD FOR CHANNEL &#39;&#39;;&quot;
+</span><span style="color:#abb2bf;">    </span><span style="color:#eb6772;">echo &quot;Setting up slave with master log file</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">$MASTER_LOG_FILE \
+</span><span style="color:#eb6772;">and position</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">$MASTER_LOG_POS&quot;
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">mysql -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD} &lt;&lt;EOF
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">CHANGE MASTER TO
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">MASTER_HOST=&#39;mysql-0.mysql&#39;,
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">MASTER_USER=&#39;replication&#39;,
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">MASTER_PASSWORD=&#39;repl_password&#39;,
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">MASTER_LOG_FILE=&#39;$MASTER_LOG_FILE&#39;,
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">MASTER_LOG_POS=$MASTER_LOG_POS;
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">START SLAVE;
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">EOF
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">mysql -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD} &lt;&lt;EOF
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">SET GLOBAL super_read_only = 1
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">EOF
+</span><span style="color:#abb2bf;">    </span><span style="color:#9acc76;">echo &quot;Slave setup complete!&quot;
+</span><span style="color:#abb2bf;">---
+</span><span style="color:#abb2bf;">
+</span><span style="font-style:italic;color:#5f697a;"># - StatefulSet definition for MySQL with init container and sidecar container
+</span><span style="color:#eb6772;">apiVersion</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">apps/v1
+</span><span style="color:#eb6772;">kind</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">StatefulSet
+</span><span style="color:#eb6772;">metadata</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql
+</span><span style="color:#eb6772;">spec</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">selector</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">    </span><span style="color:#eb6772;">matchLabels</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">      </span><span style="color:#eb6772;">app</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">serviceName</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">replicas</span><span style="color:#abb2bf;">: </span><span style="color:#db9d63;">3
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">template</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">    </span><span style="color:#eb6772;">metadata</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">      </span><span style="color:#eb6772;">labels</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">        </span><span style="color:#eb6772;">app</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql
+</span><span style="color:#abb2bf;">    </span><span style="color:#eb6772;">spec</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">      </span><span style="color:#eb6772;">initContainers</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">      - </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">init-mysql
+</span><span style="color:#abb2bf;">        </span><span style="color:#eb6772;">image</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql:8.0
+</span><span style="color:#abb2bf;">        </span><span style="color:#eb6772;">command</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">        - </span><span style="color:#9acc76;">bash
+</span><span style="color:#abb2bf;">        - </span><span style="color:#9acc76;">&quot;-c&quot;
+</span><span style="color:#abb2bf;">        - </span><span style="color:#cd74e8;">|
+</span><span style="color:#9acc76;">          set -ex
+</span><span style="color:#9acc76;">          # Generate server-id based on ordinal index
+</span><span style="color:#9acc76;">          [[ $HOSTNAME =~ -([0-9]+)$ ]] || exit 1
+</span><span style="color:#9acc76;">          ordinal=${BASH_REMATCH[1]}
+</span><span style="color:#9acc76;">          # Only the first pod (ordinal 0) is master
+</span><span style="color:#9acc76;">          if [[ $ordinal -eq 0 ]]; then
+</span><span style="color:#9acc76;">            cp /mnt/config-map/master.cnf /etc/mysql/conf.d/
+</span><span style="color:#9acc76;">          else
+</span><span style="color:#9acc76;">            # Update server-id for slaves
+</span><span style="color:#9acc76;">            cp /mnt/config-map/slave.cnf /etc/mysql/conf.d/
+</span><span style="color:#9acc76;">            sed -i &quot;s/server-id=2/server-id=$((ordinal + 1))/&quot; \
+</span><span style="color:#9acc76;">/etc/mysql/conf.d/slave.cnf
+</span><span style="color:#abb2bf;">          </span><span style="color:#9acc76;">fi
+</span><span style="color:#abb2bf;">        </span><span style="color:#eb6772;">volumeMounts</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">        - </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">conf
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">mountPath</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">/etc/mysql/conf.d
+</span><span style="color:#abb2bf;">        - </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">config-map
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">mountPath</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">/mnt/config-map
+</span><span style="color:#abb2bf;">      </span><span style="color:#eb6772;">containers</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">      - </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql
+</span><span style="color:#abb2bf;">        </span><span style="color:#eb6772;">image</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql:8.0
+</span><span style="color:#abb2bf;">        </span><span style="color:#eb6772;">env</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">        - </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">MYSQL_ROOT_PASSWORD
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">value</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">&quot;rootpassword&quot;
+</span><span style="color:#abb2bf;">        </span><span style="color:#eb6772;">ports</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">        - </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">containerPort</span><span style="color:#abb2bf;">: </span><span style="color:#db9d63;">3306
+</span><span style="color:#abb2bf;">        </span><span style="color:#eb6772;">volumeMounts</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">        - </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">data
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">mountPath</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">/var/lib/mysql
+</span><span style="color:#abb2bf;">        - </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">conf
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">mountPath</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">/etc/mysql/conf.d
+</span><span style="color:#abb2bf;">        - </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">config-map
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">mountPath</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">/mnt/config-map
+</span><span style="color:#abb2bf;">        </span><span style="color:#eb6772;">resources</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">requests</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">            </span><span style="color:#eb6772;">cpu</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">500m
+</span><span style="color:#abb2bf;">            </span><span style="color:#eb6772;">memory</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">1Gi
+</span><span style="color:#abb2bf;">        </span><span style="color:#eb6772;">livenessProbe</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">exec</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">            </span><span style="color:#eb6772;">command</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">            - </span><span style="color:#9acc76;">mysqladmin
+</span><span style="color:#abb2bf;">            - </span><span style="color:#9acc76;">ping
+</span><span style="color:#abb2bf;">            - </span><span style="color:#9acc76;">-u
+</span><span style="color:#abb2bf;">            - </span><span style="color:#9acc76;">root
+</span><span style="color:#abb2bf;">            - </span><span style="color:#9acc76;">-prootpassword
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">initialDelaySeconds</span><span style="color:#abb2bf;">: </span><span style="color:#db9d63;">30
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">periodSeconds</span><span style="color:#abb2bf;">: </span><span style="color:#db9d63;">10
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">timeoutSeconds</span><span style="color:#abb2bf;">: </span><span style="color:#db9d63;">5
+</span><span style="color:#abb2bf;">        </span><span style="color:#eb6772;">readinessProbe</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">exec</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">            </span><span style="color:#eb6772;">command</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">            - </span><span style="color:#9acc76;">mysql
+</span><span style="color:#abb2bf;">            - </span><span style="color:#9acc76;">-u
+</span><span style="color:#abb2bf;">            - </span><span style="color:#9acc76;">root
+</span><span style="color:#abb2bf;">            - </span><span style="color:#9acc76;">-prootpassword
+</span><span style="color:#abb2bf;">            - </span><span style="color:#9acc76;">-e
+</span><span style="color:#abb2bf;">            - </span><span style="color:#9acc76;">SELECT 1
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">initialDelaySeconds</span><span style="color:#abb2bf;">: </span><span style="color:#db9d63;">5
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">periodSeconds</span><span style="color:#abb2bf;">: </span><span style="color:#db9d63;">2
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">timeoutSeconds</span><span style="color:#abb2bf;">: </span><span style="color:#db9d63;">1
+</span><span style="color:#abb2bf;">      - </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">replication-init
+</span><span style="color:#abb2bf;">        </span><span style="color:#eb6772;">image</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql:8.0
+</span><span style="color:#abb2bf;">        </span><span style="color:#eb6772;">command</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">        - </span><span style="color:#9acc76;">bash
+</span><span style="color:#abb2bf;">        - </span><span style="color:#9acc76;">&quot;-c&quot;
+</span><span style="color:#abb2bf;">        - </span><span style="color:#cd74e8;">|
+</span><span style="color:#9acc76;">          set -ex
+</span><span style="color:#9acc76;">          # Wait for MySQL to be ready
+</span><span style="color:#9acc76;">          until mysqladmin ping -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD}; do
+</span><span style="color:#9acc76;">            echo &quot;Waiting for MySQL to be ready...&quot;
+</span><span style="color:#9acc76;">            sleep 2
+</span><span style="color:#9acc76;">          done
+</span><span style="color:#9acc76;">          # Determine if master or slave based on hostname
+</span><span style="color:#9acc76;">          [[ $HOSTNAME =~ -([0-9]+)$ ]] || exit 1
+</span><span style="color:#9acc76;">          ordinal=${BASH_REMATCH[1]}
+</span><span style="color:#9acc76;">          if [[ $ordinal -eq 0 ]]; then
+</span><span style="color:#9acc76;">            echo &quot;Initializing master...&quot;
+</span><span style="color:#9acc76;">            # Execute the script content instead of trying to run the file
+</span><span style="color:#9acc76;">            bash -c &quot;$(cat /mnt/config-map/init-master.sh)&quot;
+</span><span style="color:#9acc76;">          else
+</span><span style="color:#9acc76;">            echo &quot;Initializing slave...&quot;
+</span><span style="color:#9acc76;">            # Execute the script content instead of trying to run the file
+</span><span style="color:#9acc76;">            bash -c &quot;$(cat /mnt/config-map/init-slave.sh)&quot;
+</span><span style="color:#9acc76;">          fi
+</span><span style="color:#9acc76;">          # Keep container running
+</span><span style="color:#9acc76;">          tail -f /dev/null
+</span><span style="color:#abb2bf;">        </span><span style="color:#eb6772;">env</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">        - </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">MYSQL_ROOT_PASSWORD
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">value</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">&quot;rootpassword&quot;
+</span><span style="color:#abb2bf;">        </span><span style="color:#eb6772;">volumeMounts</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">        - </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">config-map
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">mountPath</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">/mnt/config-map
+</span><span style="color:#abb2bf;">      </span><span style="color:#eb6772;">volumes</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">      - </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">conf
+</span><span style="color:#abb2bf;">        </span><span style="color:#eb6772;">emptyDir</span><span style="color:#abb2bf;">: {}
+</span><span style="color:#abb2bf;">      - </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">config-map
+</span><span style="color:#abb2bf;">        </span><span style="color:#eb6772;">configMap</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql-config
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">volumeClaimTemplates</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">  - </span><span style="color:#eb6772;">metadata</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">      </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">data
+</span><span style="color:#abb2bf;">    </span><span style="color:#eb6772;">spec</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">      </span><span style="color:#eb6772;">accessModes</span><span style="color:#abb2bf;">: [</span><span style="color:#9acc76;">&quot;ReadWriteOnce&quot;</span><span style="color:#abb2bf;">]
+</span><span style="color:#abb2bf;">      </span><span style="color:#eb6772;">resources</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">        </span><span style="color:#eb6772;">requests</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">          </span><span style="color:#eb6772;">storage</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">10Gi
+</span><span style="color:#abb2bf;">---
+</span><span style="color:#abb2bf;">
+</span><span style="font-style:italic;color:#5f697a;"># - Service definitions for headless service and replica service
+</span><span style="color:#eb6772;">apiVersion</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">v1
+</span><span style="color:#eb6772;">kind</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">Service
+</span><span style="color:#eb6772;">metadata</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">labels</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">    </span><span style="color:#eb6772;">app</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql
+</span><span style="color:#eb6772;">spec</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">ports</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">  - </span><span style="color:#eb6772;">port</span><span style="color:#abb2bf;">: </span><span style="color:#db9d63;">3306
+</span><span style="color:#abb2bf;">    </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">clusterIP</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">None
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">selector</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">    </span><span style="color:#eb6772;">app</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql
+</span><span style="color:#abb2bf;">---
+</span><span style="color:#abb2bf;">
+</span><span style="color:#eb6772;">apiVersion</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">v1
+</span><span style="color:#eb6772;">kind</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">Service
+</span><span style="color:#eb6772;">metadata</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql-read
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">labels</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">    </span><span style="color:#eb6772;">app</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql
+</span><span style="color:#abb2bf;">    </span><span style="color:#eb6772;">app.kubernetes.io/name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql
+</span><span style="color:#abb2bf;">    </span><span style="color:#eb6772;">readonly</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">&quot;true&quot;
+</span><span style="color:#eb6772;">spec</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">ports</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">  - </span><span style="color:#eb6772;">name</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql
+</span><span style="color:#abb2bf;">    </span><span style="color:#eb6772;">port</span><span style="color:#abb2bf;">: </span><span style="color:#db9d63;">3306
+</span><span style="color:#abb2bf;">  </span><span style="color:#eb6772;">selector</span><span style="color:#abb2bf;">:
+</span><span style="color:#abb2bf;">    </span><span style="color:#eb6772;">app</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">mysql
+</span><span style="color:#abb2bf;">    </span><span style="color:#eb6772;">replica</span><span style="color:#abb2bf;">: </span><span style="color:#9acc76;">&quot;true&quot;
+</span><span style="color:#abb2bf;">---
+</span></code></pre>
+<pre style="background-color:#2b303b;color:#6c7079;"><code><span style="color:#abb2bf;"># - Commands for applying labels to reader nodes
+</span><span style="color:#abb2bf;">kubectl label pods mysql-1 replica=true
+</span><span style="color:#abb2bf;">kubectl label pods mysql-2 replica=true
+</span></code></pre>
+<hr />
+<h3 id="final-thoughts">Final Thoughts</h3>
+<p>This is a decent approach for using MySQL with StatefulSets. It leverages MySQL’s default replication mechanism to create a small MySQL cluster. For a user application, say a Django project, this setup provides database routers that allow you to specify separate configurations for reader and write databases.</p>
+<p>Just a quick heads up:<br />
+Be mindful that all nodes are in the same Availability Zone (AZ) to avoid incurring extra data transfer charges. While this isn't a production-ready solution, the intention was more to showcase how Kubernetes StatefulSets can be utilized to run MySQL replicas—an educational dive into blending Kubernetes with traditional database replication strategies.</p>
+<p>Hope this gives you a clearer picture of how you can run MySQL on Kubernetes with a modern twist. Happy coding and clustering!</p>
+</div>
+    <footer class="post-footer">
+        
+        <ul class="post-tags">
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/kubernetes/">Kubernetes</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/database/">Database</a></li>
+        
+        </ul>
+        
+    </footer>
+</article>
+
+        </main>
+
+        <footer class="footer">
+            <span>&copy; 2025 <a href="https://vedangj044.github.io/">Github</a></span>
+            <span>&middot;</span>
+            <span>Powered by <a href="https://www.getzola.org" rel="noopener" target="_blank">Zola</a>️</span>
+            <span>&middot;</span>
+            <span>Theme️ <a href="https://github.com/schoenenberg/zola-paper" rel="noopener" target="_blank">Zola-Paper</a></span>
+        </footer>
+    
+    </body>
+</html>

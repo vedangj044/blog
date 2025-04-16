@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Vedang&#x27;s blog - Access Management Best Practices</title>
+
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+        <!-- Enable responsiveness on mobile devices-->
+        <!-- viewport-fit=cover is to support iPhone X rounded corners and notch in landscape-->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+
+        <!-- Standard meta tags -->
+        <meta name="author" content="Vedang Joshi">
+        <meta name="description" content="Blog of Vedang Joshi">
+
+        <!-- Open Graph Tags -->
+        <meta property="og:site_name" content="Vedang's Blog">
+        <meta property="og:title" content="Blog of Vedang Joshi">
+        <meta property="og:url" content="https://vedangj044.github.io/blog/">
+        <meta property="og:description" content="Welcome to my blog. I write about Technology and Science.">
+        
+        <meta property="og:type" content="article">
+        <meta property="article:author" content="https://vedangj044.github.io/">
+
+        <!-- CSS -->
+        <link rel="stylesheet" href="https://vedangj044.github.io/blog/main.css">
+
+        <!-- Feeds -->
+        <link rel="alternate" type="application/rss+xml" title="RSS" href="https://vedangj044.github.io/blog/rss.xml">
+
+        <!-- Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-683TMZN24E"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-683TMZN24E');
+        </script>
+
+    </head>
+    
+    <body class="single">
+    
+
+    
+        <header class="header">
+            <nav class="nav">
+                
+                <p class="logo"><a href="https://vedangj044.github.io/blog">Vedang&#x27;s blog</a></p>
+                
+                <ul class="menu">
+
+                    
+                    <li>
+                        <a id = "theme-toggle" style="height: 100%; cursor: pointer;" >
+                            <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+                            <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        </a>
+                    </li> 
+                    
+                        <li><a target="_blank" href="https:&#x2F;&#x2F;vedangj044.github.io">Website</a></li>
+                    
+                    <script>
+                        // set initial state
+                        var button = document.getElementById("theme-toggle");
+                        var sun = document.getElementById("sun");
+                        var moon = document.getElementById("moon");
+                        var key = "dark";
+
+                        function dar() {
+                            sun.style.display = "none";
+                            moon.style.display = "block";
+                            document.body.classList.add("dark");
+                            localStorage.setItem(key, "true");
+                        }
+
+                        function li() {
+                            sun.style.display = "block";
+                            moon.style.display = "none";
+                            document.body.classList.remove("dark");
+                            localStorage.setItem(key, "false");
+                        }
+
+                        if (localStorage.getItem(key) === null) {
+                            li();
+                        }
+                        else if (localStorage.getItem(key) === "false") {
+                            li();
+                        }
+                        else {
+                            dar();
+                        }
+
+                        button.onclick = function() {
+                            if (localStorage.getItem(key) === "true") {
+                                li();
+                            }
+                            else {
+                                dar();
+                            }
+                        }
+                    </script>
+                    
+
+                </ul>
+            </nav>
+        </header>
+
+        <main class="main">
+            
+<article class="post-single">
+    <header class="post-header">
+        <h1 class="post-title">Access Management Best Practices</h1>
+        <div class="post-meta">
+            <span class="post-author">
+                Author: Vedang Joshi
+            </span>
+            <br/>
+            <span class="post-date">Published: <time>January 18, 2023</time></span>
+            <span>&middot;</span>
+            <span class="post-reading-time">4 min read</span>
+        </div>
+    </header>
+    <div class="post-content"><p>We are all aware of the importance of data in today’s world. Anything valuable always comes with its security risks. The first step in the direction of protecting data is limiting who has access to it as much as possible. Identity and access management is a framework that helps us make sure that the right people have access to the right data and resources for the right duration.</p>
+<p>In an organization, we work with many tools, for example - VMs, Databases, SAAS tools, etc. All these tools have their approach to user management. It is a cumbersome process to manage the users across all the platforms as the organization scales and the number of users increases. Thus having policies and procedures for user creation, audit, and removal helps reduce the security risk.</p>
+<h2 id="improving-the-onboarding-process">Improving the onboarding process</h2>
+<h3 id="centralizing-access-requests">Centralizing access requests</h3>
+<p>The onboarding of each user on all platforms should be done by raising a request to a centralized system. The users should inform the team ( that manages the tool ) about why this particular access is required. This helps in tracking and compliance.</p>
+<h3 id="enforcing-mfa">Enforcing MFA</h3>
+<p>The tools should be configured to let users access the resources only after an MFA device is used to authenticate.</p>
+<h3 id="using-emails-as-usernames">Using emails as usernames</h3>
+<p>Emails are always unique in an organization. They should be used in place of generic usernames wherever possible. This practice can help us automate exit management.</p>
+<p>For places where usernames can’t be emails or for emails themselves, an organization should come up with a single pattern that is used to generate the username. This pattern must depend on something unique to the user like her employee ID. Example - &lt;first_name&gt;.&lt;employee_id&gt; etc.</p>
+<h3 id="using-sso">Using SSO</h3>
+<p>SSO should be used wherever possible. SSO should also be configured to allow only members approved by the admin of the tool to access the resource.</p>
+<h3 id="least-privilege-possible">Least Privilege Possible</h3>
+<p>This is considered a principal in the world of IAM. It refers to the practice of assigning minimum levels of access to users, only essential for their roles and duties. Every tool comes with RBAC - Role-based access control. These are policies that define what privileges a role has, a user is then given the required set of roles.</p>
+<h3 id="enforcing-strong-password-policies">Enforcing strong password policies</h3>
+<p>Users should only be allowed to create their accounts when they have a strong password. A strong password is at least 8 characters long, uses special characters, and avoids obvious or guessable phrases.</p>
+<p>Admin must apply password expiration policies.</p>
+<h2 id="limiting-programmatic-access">Limiting programmatic access</h2>
+<h3 id="never-commit-credentials-to-git">Never commit credentials to Git</h3>
+<p>Credentials used to interact with the APIs of any tool should be stored in a secured vault or environment variables and should never be hard-coded or committed to version control. CI integrations can help enforce this.</p>
+<h3 id="timely-rotating-keys">Timely rotating keys</h3>
+<p>Access keys should be rotated timely and must be different for all environments in a single tenant setup.</p>
+<h3 id="taking-ownership">Taking ownership</h3>
+<p>Each access key must be mapped to the human user who uses it.</p>
+<h2 id="automate-offboarding-process">Automate offboarding process</h2>
+<h3 id="daily-user-audits">Daily user audits</h3>
+<p>Whenever a user leaves the organization, his email can be searched for and deleted from all the tools he has access. This process can be automated in tools that provide SSO, or it can be done through automation scripts.</p>
+<h3 id="transferring-ownership-of-access-keys">Transferring ownership of access keys</h3>
+<p>After the offboarding of the user, if the keys are preserved they must be rotated and a new owner should be assigned to them.</p>
+<h2 id="regular-access-audits-and-cleanup">Regular access audits and cleanup</h2>
+<p>The security team performs regular cleanup and audit activities to identify misconfigurations like:</p>
+<ul>
+<li>
+<p>Over Privileged accounts</p>
+</li>
+<li>
+<p>Credential sharing</p>
+</li>
+<li>
+<p>Stale accounts</p>
+</li>
+<li>
+<p>Policy validation</p>
+</li>
+</ul>
+<h2 id="tips-for-users">Tips for users</h2>
+<ul>
+<li>
+<p>Users should inform the Admin if they no longer need particular access and get it deleted.</p>
+</li>
+<li>
+<p>Users should never share their credentials.</p>
+</li>
+<li>
+<p>Users should never use the same password for more than one tool.</p>
+</li>
+<li>
+<p>Users should never store their credentials on stick notes and slack channels etc</p>
+</li>
+</ul>
+<p>In conclusion, IAM revolves around people, each digital identity must have an owner - a human user. While teams benefit from using SSO for the majority of the places, it always helps to handle matters of access management with keeping the involved risk in mind.</p>
+<p>Thank you</p>
+</div>
+    <footer class="post-footer">
+        
+        <ul class="post-tags">
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/security/">Security</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/access-management/">Access Management</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/devops/">DevOps</a></li>
+        
+        </ul>
+        
+    </footer>
+</article>
+
+        </main>
+
+        <footer class="footer">
+            <span>&copy; 2025 <a href="https://vedangj044.github.io/">Github</a></span>
+            <span>&middot;</span>
+            <span>Powered by <a href="https://www.getzola.org" rel="noopener" target="_blank">Zola</a>️</span>
+            <span>&middot;</span>
+            <span>Theme️ <a href="https://github.com/schoenenberg/zola-paper" rel="noopener" target="_blank">Zola-Paper</a></span>
+        </footer>
+    
+    </body>
+</html>
