@@ -75,7 +75,8 @@ data:
     set -ex
     echo "Creating replication user..."
     mysql -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD} <<EOF
-    CREATE USER IF NOT EXISTS 'replication'@'%' IDENTIFIED WITH mysql_native_password BY 'repl_password';
+    CREATE USER IF NOT EXISTS 'replication'@'%'
+    IDENTIFIED WITH mysql_native_password BY 'repl_password';
     GRANT REPLICATION SLAVE ON *.* TO 'replication'@'%';
     FLUSH PRIVILEGES;
     EOF
@@ -83,17 +84,21 @@ data:
     #!/bin/bash
     set -ex
     echo "Waiting for master to be ready..."
-    until mysql -h 127.0.0.1 -h mysql-0.mysql -u root -p${MYSQL_ROOT_PASSWORD} -e "SELECT 1"; do
+    until mysql -h 127.0.0.1 -h mysql-0.mysql -u root -p${MYSQL_ROOT_PASSWORD} \
+-e "SELECT 1"; do
       echo "Master is not ready yet..."
       sleep 3
     done
     echo "Getting master position..."
-    MASTER_STATUS=$(mysql -h mysql-0.mysql -u root -p${MYSQL_ROOT_PASSWORD} -e "SHOW MASTER STATUS" --skip-column-names)
+    MASTER_STATUS=$(mysql -h mysql-0.mysql -u root -p${MYSQL_ROOT_PASSWORD} \
+-e "SHOW MASTER STATUS" --skip-column-names)
     MASTER_LOG_FILE=$(echo $MASTER_STATUS | cut -f 1 -d ' ')
     MASTER_LOG_POS=$(echo $MASTER_STATUS | cut -f 2 -d ' ')
     echo "Stopping replica IO thread if running..."
-    mysql -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD} -e "STOP REPLICA IO_THREAD FOR CHANNEL '';"
-    echo "Setting up slave with master log file: $MASTER_LOG_FILE and position: $MASTER_LOG_POS"
+    mysql -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD} \
+-e "STOP REPLICA IO_THREAD FOR CHANNEL '';"
+    echo "Setting up slave with master log file: $MASTER_LOG_FILE \
+and position: $MASTER_LOG_POS"
     mysql -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD} <<EOF
     CHANGE MASTER TO
     MASTER_HOST='mysql-0.mysql',
@@ -142,7 +147,8 @@ spec:
           else
             # Update server-id for slaves
             cp /mnt/config-map/slave.cnf /etc/mysql/conf.d/
-            sed -i "s/server-id=2/server-id=$((ordinal + 1))/" /etc/mysql/conf.d/slave.cnf
+            sed -i "s/server-id=2/server-id=$((ordinal + 1))/" \
+/etc/mysql/conf.d/slave.cnf
           fi
         volumeMounts:
         - name: conf
@@ -171,13 +177,24 @@ spec:
             memory: 1Gi
         livenessProbe:
           exec:
-            command: ["mysqladmin", "ping", "-u", "root", "-prootpassword"]
+            command:
+            - mysqladmin
+            - ping
+            - -u
+            - root
+            - -prootpassword
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 5
         readinessProbe:
           exec:
-            command: ["mysql", "-u", "root", "-prootpassword", "-e", "SELECT 1"]
+            command:
+            - mysql
+            - -u
+            - root
+            - -prootpassword
+            - -e
+            - SELECT 1
           initialDelaySeconds: 5
           periodSeconds: 2
           timeoutSeconds: 1
