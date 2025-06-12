@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Vedang&#x27;s blog - Breaking down common attack vectors on AWS</title>
+
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+        <!-- Enable responsiveness on mobile devices-->
+        <!-- viewport-fit=cover is to support iPhone X rounded corners and notch in landscape-->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+
+        <!-- Standard meta tags -->
+        <meta name="author" content="Vedang Joshi">
+        <meta name="description" content="Blog of Vedang Joshi">
+
+        <!-- Open Graph Tags -->
+        <meta property="og:site_name" content="Vedang's Blog">
+        <meta property="og:title" content="Blog of Vedang Joshi">
+        <meta property="og:url" content="https://vedangj044.github.io/blog/">
+        <meta property="og:description" content="Welcome to my blog. I write about Technology and Science.">
+        
+        <meta property="og:type" content="article">
+        <meta property="article:author" content="https://vedangj044.github.io/">
+
+        <!-- CSS -->
+        <link rel="stylesheet" href="https://vedangj044.github.io/blog/main.css">
+
+        <!-- Feeds -->
+        <link rel="alternate" type="application/rss+xml" title="RSS" href="https://vedangj044.github.io/blog/rss.xml">
+
+        <!-- Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-683TMZN24E"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-683TMZN24E');
+        </script>
+
+    </head>
+    
+    <body class="single">
+    
+
+    
+        <header class="header">
+            <nav class="nav">
+                
+                <p class="logo"><a href="https://vedangj044.github.io/blog">Vedang&#x27;s blog</a></p>
+                
+                <ul class="menu">
+
+                    
+                    <li>
+                        <a id = "theme-toggle" style="height: 100%; cursor: pointer;" >
+                            <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+                            <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        </a>
+                    </li> 
+                    
+                        <li><a target="_blank" href="https:&#x2F;&#x2F;vedangj044.github.io">Website</a></li>
+                    
+                    <script>
+                        // set initial state
+                        var button = document.getElementById("theme-toggle");
+                        var sun = document.getElementById("sun");
+                        var moon = document.getElementById("moon");
+                        var key = "dark";
+
+                        function dar() {
+                            sun.style.display = "none";
+                            moon.style.display = "block";
+                            document.body.classList.add("dark");
+                            localStorage.setItem(key, "true");
+                        }
+
+                        function li() {
+                            sun.style.display = "block";
+                            moon.style.display = "none";
+                            document.body.classList.remove("dark");
+                            localStorage.setItem(key, "false");
+                        }
+
+                        if (localStorage.getItem(key) === null) {
+                            li();
+                        }
+                        else if (localStorage.getItem(key) === "false") {
+                            li();
+                        }
+                        else {
+                            dar();
+                        }
+
+                        button.onclick = function() {
+                            if (localStorage.getItem(key) === "true") {
+                                li();
+                            }
+                            else {
+                                dar();
+                            }
+                        }
+                    </script>
+                    
+
+                </ul>
+            </nav>
+        </header>
+
+        <main class="main">
+            
+<article class="post-single">
+    <header class="post-header">
+        <h1 class="post-title">Breaking down common attack vectors on AWS</h1>
+        <div class="post-meta">
+            <span class="post-author">
+                Author: Vedang Joshi
+            </span>
+            <br/>
+            <span class="post-date">Published: <time>November 11, 2024</time></span>
+            <span>&middot;</span>
+            <span class="post-reading-time">5 min read</span>
+        </div>
+    </header>
+    <div class="post-content"><p>With the proliferation of cloud computing, organizations are increasingly adopting services like AWS to scale their operations. However, the cloud presents unique challenges in securing assets. Notably, public IP addresses and user credentials emerge as some of the most significant attack vectors in cloud environments. This blog delves into the intricacies of these attack vectors, drawing from notable breaches to illustrate risks and explore effective mitigation strategies.</p>
+<h2 id="high-profile-aws-breaches-lessons-learned">High-Profile AWS Breaches: Lessons Learned</h2>
+<p>Some major breaches underscore how severe misconfigurations and permissions issues can be within AWS and cloud environments in general. <strong>Companies like Dropbox, Capital One, Twilio, and Mobikwik</strong> have suffered substantial data breaches due to cloud mismanagement. Key factors in these breaches included:</p>
+<ul>
+<li><strong>Over-privileged IAM credentials</strong>: Attackers often exploit excessive permissions granted to users or applications, allowing them to move laterally within a network or access sensitive data.</li>
+<li><strong>Misconfigured Firewalls</strong>: Many organizations fail to properly restrict traffic, inadvertently exposing their services to the open internet.</li>
+<li><strong>Public S3 Buckets</strong>: Misconfigured S3 storage buckets, accessible without authentication, have led to unauthorized access to sensitive data.</li>
+</ul>
+<p>These incidents highlight critical areas in cloud security that are often overlooked, reinforcing the need for strict security configurations and continuous monitoring.</p>
+<hr />
+<h2 id="core-attack-vectors-in-the-cloud-public-ip-addresses-and-user-credentials">Core Attack Vectors in the Cloud: Public IP Addresses and User Credentials</h2>
+<h3 id="1-public-ip-addresses">1. Public IP Addresses</h3>
+<p>Public IPs allow resources to be accessible from anywhere, making them highly vulnerable if not properly secured. Key risks associated with public IPs include:</p>
+<ul>
+<li><strong>Exposed EC2 Instances</strong>: Misconfigured security groups can leave EC2 instances open to the internet, making them vulnerable to attack.</li>
+<li><strong>Public S3 Buckets and RDS Instances</strong>: Publicly accessible storage or database instances are critical vulnerabilities, especially if they contain sensitive data.</li>
+</ul>
+<h4 id="severity-assessment">Severity Assessment:</h4>
+<ul>
+<li><strong>Critical</strong>: EC2 instances with misconfigured security groups are at high risk and should be secured immediately.</li>
+<li><strong>High to Low</strong>: While public S3 buckets and RDS instances are less commonly exposed, they still represent significant risks. Public access to these services, even in test or POC environments, can lead to unintended data exposure.</li>
+</ul>
+<h3 id="2-user-credentials">2. User Credentials</h3>
+<p>Compromised credentials are one of the most frequent causes of cloud breaches. In AWS, this includes:</p>
+<ul>
+<li><strong>Credentials Exposed in Code Repositories</strong>: Hard-coded credentials or secrets accidentally pushed to public repositories (like GitHub) expose systems to direct attacks.</li>
+<li><strong>Integration with Third-Party Tools</strong>: Tools like New Relic, Databricks, and Snowflake often have API access to AWS. If these tools are compromised, attackers can pivot into AWS resources.</li>
+<li><strong>Credentials Stored on EC2 Instances or EKS Pods</strong>: If an EC2 instance or containerized application with embedded credentials is compromised, attackers gain access.</li>
+<li><strong>Weak Credentials in Communication Channels</strong>: Credentials shared in tools like Slack (e.g., Slack tokens) present vulnerabilities if the chat application is breached.</li>
+</ul>
+<h4 id="severity-assessment-1">Severity Assessment:</h4>
+<ul>
+<li><strong>Critical</strong>: Credentials leaked in code repositories or used by third-party tools pose immediate risks.</li>
+<li><strong>High to Low</strong>: Credentials stored within EC2 or shared across Slack channels are also high-risk but less immediately exploitable.</li>
+</ul>
+<hr />
+<h2 id="mitigation-strategies">Mitigation Strategies</h2>
+<h3 id="mitigating-public-ip-risks">Mitigating Public IP Risks</h3>
+<ol>
+<li>
+<p><strong>Technical Solutions</strong></p>
+<ul>
+<li><strong>Automated IP Monitoring</strong>: Develop scripts to periodically fetch and update public IPs, ensuring a current inventory.</li>
+<li><strong>Public Exposure Flagging</strong>: Flag any IPs associated with publicly exposed services and assess exposure risks.</li>
+<li><strong>NMAP Scans on Public IPs</strong>: Regularly perform scans to detect open ports and vulnerabilities.</li>
+<li><strong>Automated IP List Refresh</strong>: Configure the script to refresh IP lists automatically, keeping your monitoring up to date.</li>
+</ul>
+</li>
+<li>
+<p><strong>Process Improvements</strong></p>
+<ul>
+<li><strong>Approval Requirements for New IPs</strong>: Require security team approval for all new public IP provisions to ensure each IP is justified and secure.</li>
+</ul>
+</li>
+<li>
+<p><strong>Enhanced Security Monitoring</strong></p>
+<ul>
+<li><strong>Request Logging</strong>: Log each request to publicly accessible IPs to monitor for unusual access patterns.</li>
+<li><strong>Web Application Firewall (WAF)</strong>: Implement a WAF to help mitigate attacks on exposed services.</li>
+<li><strong>Rate Limiting and DoS Simulation</strong>: Apply rate limits to public IPs and periodically simulate DoS attacks to test the effectiveness of rate limiting.</li>
+</ul>
+</li>
+</ol>
+<h3 id="mitigating-risks-from-user-credentials">Mitigating Risks from User Credentials</h3>
+<ol>
+<li>
+<p><strong>Technical Solutions</strong></p>
+<ul>
+<li><strong>Multi-Factor Authentication (MFA)</strong>: Enforce MFA for all human users, making it significantly harder for attackers to exploit stolen credentials.</li>
+<li><strong>Role-Based Access Control</strong>: Avoid granting IAM or administrative privileges to service accounts, restricting elevated privileges only to human users with clear need.</li>
+<li><strong>Credential Rotation</strong>: Rotate IAM service account credentials every 90 days, minimizing the impact of compromised credentials.</li>
+<li><strong>Vault Integration for Secret Management</strong>: Use Vault or similar tools for securely managing and rotating credentials, reducing the risk of exposure.</li>
+</ul>
+</li>
+<li>
+<p><strong>Monitoring and Usage</strong></p>
+<ul>
+<li><strong>CloudTrail and SIEM Integration</strong>: Enable CloudTrail logging and integrate it with a SIEM tool for real-time monitoring and alerting on anomalous activity.</li>
+<li><strong>Activity Monitoring</strong>: Continuously monitor IAM user activity to detect unusual usage patterns that may indicate compromised credentials.</li>
+</ul>
+</li>
+<li>
+<p><strong>Process Improvements</strong></p>
+<ul>
+<li><strong>Distinguishing Human and Automated Users</strong>: Clearly separate human and automated user accounts to control permissions more effectively.</li>
+<li><strong>Exit Notifications</strong>: Notify IT, Security, and relevant teams when a user exits to prevent any orphaned access.</li>
+<li><strong>OAuth-Only Tools</strong>: Procure only tools that support OAuth to enhance security in third-party integrations.</li>
+</ul>
+</li>
+</ol>
+<hr />
+<h2 id="summary">Summary</h2>
+<ol>
+<li><strong>Primary Attack Vectors</strong>: The most significant attack vectors in cloud environments are public IP addresses and user credentials, as they represent entry points that attackers can exploit directly.</li>
+<li><strong>Mitigation through Review and Monitoring</strong>: Regularly reviewing and securing public IPs, combined with robust credential management, can significantly reduce exposure risks.</li>
+<li><strong>Layered Security for Credentials</strong>: Keeping credentials updated, using tools like Vault, enforcing MFA, and integrating monitoring tools like CloudTrail create a layered defense strategy that strengthens cloud security.</li>
+</ol>
+<p>By understanding and addressing these attack vectors, organizations can fortify their cloud environments against common threats. The cloud provides substantial flexibility and scalability, but with it comes the responsibility of vigilant, continuous security.</p>
+</div>
+    <footer class="post-footer">
+        
+        <ul class="post-tags">
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/security/">Security</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/cloud/">Cloud</a></li>
+        
+        </ul>
+        
+    </footer>
+</article>
+
+        </main>
+
+        <footer class="footer">
+            <span>&copy; 2025 <a href="https://vedangj044.github.io/">Github</a></span>
+            <span>&middot;</span>
+            <span>Powered by <a href="https://www.getzola.org" rel="noopener" target="_blank">Zola</a>️</span>
+            <span>&middot;</span>
+            <span>Theme️ <a href="https://github.com/schoenenberg/zola-paper" rel="noopener" target="_blank">Zola-Paper</a></span>
+        </footer>
+    
+    </body>
+</html>

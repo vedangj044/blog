@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Vedang&#x27;s blog - Building CRD-Xray: An AI Agent for Kubernetes Custom Operators</title>
+
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+        <!-- Enable responsiveness on mobile devices-->
+        <!-- viewport-fit=cover is to support iPhone X rounded corners and notch in landscape-->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+
+        <!-- Standard meta tags -->
+        <meta name="author" content="Vedang Joshi">
+        <meta name="description" content="Blog of Vedang Joshi">
+
+        <!-- Open Graph Tags -->
+        <meta property="og:site_name" content="Vedang's Blog">
+        <meta property="og:title" content="Blog of Vedang Joshi">
+        <meta property="og:url" content="https://vedangj044.github.io/blog/">
+        <meta property="og:description" content="Welcome to my blog. I write about Technology and Science.">
+        
+        <meta property="og:type" content="article">
+        <meta property="article:author" content="https://vedangj044.github.io/">
+
+        <!-- CSS -->
+        <link rel="stylesheet" href="https://vedangj044.github.io/blog/main.css">
+
+        <!-- Feeds -->
+        <link rel="alternate" type="application/rss+xml" title="RSS" href="https://vedangj044.github.io/blog/rss.xml">
+
+        <!-- Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-683TMZN24E"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-683TMZN24E');
+        </script>
+
+    </head>
+    
+    <body class="single">
+    
+
+    
+        <header class="header">
+            <nav class="nav">
+                
+                <p class="logo"><a href="https://vedangj044.github.io/blog">Vedang&#x27;s blog</a></p>
+                
+                <ul class="menu">
+
+                    
+                    <li>
+                        <a id = "theme-toggle" style="height: 100%; cursor: pointer;" >
+                            <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+                            <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        </a>
+                    </li> 
+                    
+                        <li><a target="_blank" href="https:&#x2F;&#x2F;vedangj044.github.io">Website</a></li>
+                    
+                    <script>
+                        // set initial state
+                        var button = document.getElementById("theme-toggle");
+                        var sun = document.getElementById("sun");
+                        var moon = document.getElementById("moon");
+                        var key = "dark";
+
+                        function dar() {
+                            sun.style.display = "none";
+                            moon.style.display = "block";
+                            document.body.classList.add("dark");
+                            localStorage.setItem(key, "true");
+                        }
+
+                        function li() {
+                            sun.style.display = "block";
+                            moon.style.display = "none";
+                            document.body.classList.remove("dark");
+                            localStorage.setItem(key, "false");
+                        }
+
+                        if (localStorage.getItem(key) === null) {
+                            li();
+                        }
+                        else if (localStorage.getItem(key) === "false") {
+                            li();
+                        }
+                        else {
+                            dar();
+                        }
+
+                        button.onclick = function() {
+                            if (localStorage.getItem(key) === "true") {
+                                li();
+                            }
+                            else {
+                                dar();
+                            }
+                        }
+                    </script>
+                    
+
+                </ul>
+            </nav>
+        </header>
+
+        <main class="main">
+            
+<article class="post-single">
+    <header class="post-header">
+        <h1 class="post-title">Building CRD-Xray: An AI Agent for Kubernetes Custom Operators</h1>
+        <div class="post-meta">
+            <span class="post-author">
+                Author: Vedang Joshi
+            </span>
+            <br/>
+            <span class="post-date">Published: <time>June 11, 2025</time></span>
+            <span>&middot;</span>
+            <span class="post-reading-time">5 min read</span>
+        </div>
+    </header>
+    <div class="post-content"><p><a href="https://github.com/vedangj044/cn-agent">Github</a></p>
+<p>If you're running Kubernetes seriously, chances are you've built a bunch of custom operators for your organization. These operators work wonders. But I've always felt something was missing — context. The kind of context that helps new engineers understand what’s happening, or helps me debug when things break. That’s where the idea for <strong>CRD-Xray</strong> started.</p>
+<p>My goal is simple: collect as much useful data from custom operators as possible, feed it into an AI agent, and use that agent to answer questions like, “What does this CRD do?”, “Which controller manages it?”, or “Why is it failing?”</p>
+<h2 id="the-4-problems-i-m-trying-to-solve">The 4 Problems I'm Trying to Solve</h2>
+<p>To explain what CRD-Xray aims to solve, here are four specific pain points I’ve faced:</p>
+<h4 id="1-no-documentation-for-custom-operators">1. No Documentation for Custom Operators</h4>
+<p>Open-source tools from CNCF are well-documented, and you can find answers on forums and StackOverflow. But when it comes to internal, organization-specific operators — good luck. There’s usually zero documentation or outdated README files that don’t help.</p>
+<h4 id="2-debugging-is-a-nightmare">2. Debugging is a Nightmare</h4>
+<p>There’s no built-in mapping in Kubernetes between a controller and the CRDs it manages. Tracing logs, understanding how different tools interact, and piecing it all together manually is painful. Imagine if we could debug across all tools and logs in one go — yeah, I know, sounds far-fetched, but I want to try.</p>
+<h4 id="3-mcp-integration">3. MCP Integration</h4>
+<p>Since I’m already maintaining a database of CRDs, their controllers, logs, and resources, this makes a great base layer of context for future AI agents. By exposing it via MCP (Model Context Provider), I could let even smarter agents use this data later on.</p>
+<h4 id="4-crd-metrics">4. CRD Metrics</h4>
+<p>We have Prometheus exporters for most core components, but custom CRDs often go unmonitored. Having a way to track their versions, usage patterns, and metrics across clusters could be super helpful.</p>
+<h2 id="step-1-data-collection">Step 1: Data Collection</h2>
+<p>To solve any of the above, I had to first collect the right data. I started by building a Kubernetes controller using the <strong>Kopf</strong> framework. It runs inside the cluster and periodically collects:</p>
+<ol>
+<li>All the CRDs installed on the cluster</li>
+<li>All events involving those CRDs</li>
+<li>All the CRs (custom resources) for each CRD</li>
+<li>All pods — this list gets passed to an LLM to figure out which pod might be the controller for a given CRD</li>
+<li>Logs from the identified controller pod (fetched every hour for now)</li>
+</ol>
+<p>I store metadata like CRD schemas, controller names, and resource names in a <strong>SQLite</strong> database. For everything else — logs, manifests, etc. — I use <strong>Qdrant</strong> as a vector database.</p>
+<h3 id="why-kopf">Why <a href="https://kopf.readthedocs.io/en/stable/">Kopf</a>?</h3>
+<p>Choosing Kopf was an architectural decision. I wanted this controller to live <em>inside</em> the cluster. That way, it can continuously monitor and collect data without relying on external scripts or cron jobs. In the future, the idea is that you could just <code>helm install</code> this tool, and boom — your AI agent is up and running.</p>
+<h2 id="step-2-the-langgraph-agent">Step 2: The <a href="https://langchain-ai.github.io/langgraph/">LangGraph</a> Agent</h2>
+<p>Once the controller is up and collecting data, the next step is building an agent that can answer queries. I used <strong>LangGraph</strong> to create a simple state-based AI agent with this flow:</p>
+<pre style="background-color:#2b303b;color:#6c7079;"><code><span style="color:#abb2bf;">user input -&gt; SQL agent -&gt; Vector agent -&gt; Synthesizer -&gt; Final output
+</span></code></pre>
+<img alt="AI agents graph" src="https://i.ibb.co/zh6NSx3j/Screenshot-2025-06-12-at-1-02-14-AM.png"/>
+<ul>
+<li><strong>SQL Agent:</strong> Uses LangChain’s <code>SQLDatabaseToolkit</code> to generate and run SQL queries based on natural language input</li>
+<li><strong>Vector Agent:</strong> Uses <code>langchain_qdrant</code> to search the vector store for relevant logs or manifests</li>
+<li><strong>Synthesizer:</strong> Combines the results from the SQL and vector search to generate a final answer using Claude (via <code>langchain_anthropic</code>)</li>
+</ul>
+<p>It’s surprisingly effective for questions like:</p>
+<ul>
+<li>“How many CRs exist for <code>FooBar</code>?”</li>
+<li>“What does the controller for <code>FooBar</code> do?”</li>
+<li>“Show me logs from the controller when resource X failed.”</li>
+</ul>
+<h3 id="the-agent-in-action">The Agent in Action</h3>
+<p>The whole point of combining structured (SQL) and unstructured (logs) data is to get deeper, more helpful answers. The agent takes in the query, runs SQL to extract basic info, does a vector search using that context, and then synthesizes a human-readable answer. It’s not perfect yet, but it’s already saving me time.</p>
+<h3 id="what-didn-t-work-yet">What Didn’t Work (Yet)</h3>
+<p>I also played around with <strong>LangGraph Studio</strong> and <strong>LangSmith</strong>. While both are promising, they still need quite a bit of manual setup and tuning. I’ve shelved that for now, but will revisit once the core system is solid.</p>
+<h2 id="what-s-next">What’s Next?</h2>
+<p>There’s a lot I want to improve:</p>
+<ul>
+<li>Make the agent more robust and conversational</li>
+<li>Build a proper test suite</li>
+<li>Create a Helm chart for easy deployment</li>
+<li>Test it on more and more custom CRDs in the wild</li>
+</ul>
+<p>This is still very much a work in progress, but I’m excited about where it’s headed. If you’ve dealt with the same pain points, or just find this idea interesting, I’d love to hear your thoughts.</p>
+<p>Thanks for reading!</p>
+</div>
+    <footer class="post-footer">
+        
+        <ul class="post-tags">
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/ai-agent/">AI-Agent</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/langgraph/">Langgraph</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/kubernetes/">Kubernetes</a></li>
+        
+        </ul>
+        
+    </footer>
+</article>
+
+        </main>
+
+        <footer class="footer">
+            <span>&copy; 2025 <a href="https://vedangj044.github.io/">Github</a></span>
+            <span>&middot;</span>
+            <span>Powered by <a href="https://www.getzola.org" rel="noopener" target="_blank">Zola</a>️</span>
+            <span>&middot;</span>
+            <span>Theme️ <a href="https://github.com/schoenenberg/zola-paper" rel="noopener" target="_blank">Zola-Paper</a></span>
+        </footer>
+    
+    </body>
+</html>

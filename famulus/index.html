@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Vedang&#x27;s blog - Famulus - building a stock predictor</title>
+
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+        <!-- Enable responsiveness on mobile devices-->
+        <!-- viewport-fit=cover is to support iPhone X rounded corners and notch in landscape-->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+
+        <!-- Standard meta tags -->
+        <meta name="author" content="Vedang Joshi">
+        <meta name="description" content="Blog of Vedang Joshi">
+
+        <!-- Open Graph Tags -->
+        <meta property="og:site_name" content="Vedang's Blog">
+        <meta property="og:title" content="Blog of Vedang Joshi">
+        <meta property="og:url" content="https://vedangj044.github.io/blog/">
+        <meta property="og:description" content="Welcome to my blog. I write about Technology and Science.">
+        
+        <meta property="og:type" content="article">
+        <meta property="article:author" content="https://vedangj044.github.io/">
+
+        <!-- CSS -->
+        <link rel="stylesheet" href="https://vedangj044.github.io/blog/main.css">
+
+        <!-- Feeds -->
+        <link rel="alternate" type="application/rss+xml" title="RSS" href="https://vedangj044.github.io/blog/rss.xml">
+
+        <!-- Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-683TMZN24E"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-683TMZN24E');
+        </script>
+
+    </head>
+    
+    <body class="single">
+    
+
+    
+        <header class="header">
+            <nav class="nav">
+                
+                <p class="logo"><a href="https://vedangj044.github.io/blog">Vedang&#x27;s blog</a></p>
+                
+                <ul class="menu">
+
+                    
+                    <li>
+                        <a id = "theme-toggle" style="height: 100%; cursor: pointer;" >
+                            <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+                            <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        </a>
+                    </li> 
+                    
+                        <li><a target="_blank" href="https:&#x2F;&#x2F;vedangj044.github.io">Website</a></li>
+                    
+                    <script>
+                        // set initial state
+                        var button = document.getElementById("theme-toggle");
+                        var sun = document.getElementById("sun");
+                        var moon = document.getElementById("moon");
+                        var key = "dark";
+
+                        function dar() {
+                            sun.style.display = "none";
+                            moon.style.display = "block";
+                            document.body.classList.add("dark");
+                            localStorage.setItem(key, "true");
+                        }
+
+                        function li() {
+                            sun.style.display = "block";
+                            moon.style.display = "none";
+                            document.body.classList.remove("dark");
+                            localStorage.setItem(key, "false");
+                        }
+
+                        if (localStorage.getItem(key) === null) {
+                            li();
+                        }
+                        else if (localStorage.getItem(key) === "false") {
+                            li();
+                        }
+                        else {
+                            dar();
+                        }
+
+                        button.onclick = function() {
+                            if (localStorage.getItem(key) === "true") {
+                                li();
+                            }
+                            else {
+                                dar();
+                            }
+                        }
+                    </script>
+                    
+
+                </ul>
+            </nav>
+        </header>
+
+        <main class="main">
+            
+<article class="post-single">
+    <header class="post-header">
+        <h1 class="post-title">Famulus - building a stock predictor</h1>
+        <div class="post-meta">
+            <span class="post-author">
+                Author: Vedang Joshi
+            </span>
+            <br/>
+            <span class="post-date">Published: <time>May  9, 2021</time></span>
+            <span>&middot;</span>
+            <span class="post-reading-time">4 min read</span>
+        </div>
+    </header>
+    <div class="post-content"><p>About a year back, my friends and I participated in a hackathon and received the following problem statement.</p>
+<blockquote>
+<p>Stock Market Trend Prediction using an Automated News Analysis</p>
+</blockquote>
+<p>I won't narrate the story about the happenings of the hackathon, but I would surely say 2 things:</p>
+<ul>
+<li><a href="https://www.nmimsindore.org/">NMIMS</a> is the most luxurious college in Indore.</li>
+<li>We didn't win this hackathon, but we did secure 3rd place, unfortunately, there were prizes only for the top 2 :(</li>
+</ul>
+<p>So, here is what we built.</p>
+<h2 id="famulus">Famulus</h2>
+<blockquote>
+<p>Famulus means an assistant working for a scholar.</p>
+</blockquote>
+<p>Famulus is an easy-to-use web application, where the user enters a brand name ( company ), our web app scraps news related to it, analyses it and predicts the change in the stock prize in an interval of 5, 7, 15, and 30 days. Displaying 3 things on the UI - Change in the stock price, predicted graph and the 3 point news summary.</p>
+<h3 id="how-does-it-work">How does it work ?</h3>
+<p>The tech stack used here is</p>
+<ul>
+<li>Python: machine learning stuff</li>
+<li>Flask</li>
+<li>React</li>
+</ul>
+<h4 id="machine-learning-model">Machine learning model</h4>
+<p>Various components are working together to give the final output.</p>
+<ol>
+<li>
+<p>Sentiment analyzer - This was an easy task, we took the very popular <a href="https://www.kaggle.com/kazanova/sentiment140">Twitter dataset</a> and trained a model which outputs the sentiment score of a text, -1 to 0 being negative and 0 to 1 being positive.
+We tested it on a small sample of news headlines and it worked quite well.</p>
+</li>
+<li>
+<p>We downloaded this <a href="https://github.com/vedangj044/News_stock_prediction/blob/729566bafb245f055d3c20940925f76d49de1f3d/india.csv">Historic Indian news dataset</a> and filtered out all business news. Then put this through our sentiment analyzer and got a sentiment score for each news headline. The final dataset we obtained here was</p>
+<p><code>{ date, news_headline, sentiment_score }</code></p>
+</li>
+<li>
+<p>Then we downloaded <a href="https://github.com/vedangj044/News_stock_prediction/blob/729566bafb245f055d3c20940925f76d49de1f3d/help.csv">Historic Sensex data from BSE</a> (Bombay stock exchange) website and merged it with the dataset created above with the index being 'date', so finally, the dataset looked like this</p>
+<p><code>{ date, (sensex_high + sensex_low)/2, sentiment_score}</code></p>
+</li>
+<li>
+<p>Now, comes an interesting part, We have two 2 values - sensex_avg and sentiment_score, to map both of them we can simply use linear regression, but do we need to predict these? NO. This is something we already know. What we need here is to use today's sentiment_score to predict the sensex_avg 5 days from now. We need to shift the sensex_avg column accordingly. So, the dataset now looks like</p>
+<p><code>{ date, sentiment_score, sensex_avg_date+5, sensex_avg_date+7, sensex_avg_date+15, sensex_avg_date+30 }</code></p>
+</li>
+<li>
+<p>Most of the work is done. We used linear regression to map sentiment_score to sensex_avg_date+5, and similarly others. We create 4 linear regression models here.</p>
+</li>
+</ol>
+<h4 id="flask">Flask</h4>
+<p>Now, we use beautifulSoup to scrap the current news, put this news through the sentiment analyzer and obtain a sentiment score. This score is feed to the model and we get price predictions for 5, 7, 15, 30 days. Nice :)</p>
+<p>Then we went on to create a summarizer, this takes in a few articles and outputs a 3 point summary for it.</p>
+<p>Now, was the time to make all this deliverable. We create a Flask API exposing the prediction value, to plot the graph, we used <a href="https://altair-viz.github.io/">Altair ( Vega )</a> which lets us send a JSON response that can be converted to a graph on the frontend.</p>
+<h3 id="hackathon-ends">Hackathon ends</h3>
+<p>All the work was done in the hackathon, there were a few patchworks and some things didn't work, but I loved this project.
+I returned home and it took me about a week to remove all the patchwork and fix things, I wrote test cases and also added a WebSocket endpoint using FastAPI. Here is the link to the repository.</p>
+<ul>
+<li><a href="https://github.com/vedangj044/News_stock_prediction">Backend</a> <a href="https://travis-ci.com/vedangj044/News_stock_prediction"><img src="https://travis-ci.com/vedangj044/News_stock_prediction.svg?branch=master" alt="Build Status" /></a></li>
+<li><a href="https://github.com/vedangj044/News_stock_font_end">Frontend</a></li>
+</ul>
+<h4 id="note">Note</h4>
+<p>Neither I nor my teammates are machine learning experts, so this approach has flaws, If you can provide a better approach, my inbox is always open, and as it always is</p>
+<p>Thanks for reading!</p>
+</div>
+    <footer class="post-footer">
+        
+        <ul class="post-tags">
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/machine-learning/">Machine Learning</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/hackthon-project/">Hackthon Project</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/python/">Python</a></li>
+        
+            <li><a href="https://vedangj044.github.io/blog/tags/github/">Github</a></li>
+        
+        </ul>
+        
+    </footer>
+</article>
+
+        </main>
+
+        <footer class="footer">
+            <span>&copy; 2025 <a href="https://vedangj044.github.io/">Github</a></span>
+            <span>&middot;</span>
+            <span>Powered by <a href="https://www.getzola.org" rel="noopener" target="_blank">Zola</a>️</span>
+            <span>&middot;</span>
+            <span>Theme️ <a href="https://github.com/schoenenberg/zola-paper" rel="noopener" target="_blank">Zola-Paper</a></span>
+        </footer>
+    
+    </body>
+</html>

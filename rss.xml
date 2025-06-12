@@ -1,0 +1,1047 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+      <title>Vedang&#x27;s blog</title>
+      <link>https://vedangj044.github.io/blog/</link>
+      <description>General thoughts, projects and more.</description>
+      <generator>Zola</generator>
+      <language>en</language>
+      <atom:link href="https://vedangj044.github.io/blog/rss.xml" rel="self" type="application/rss+xml"/>
+      <lastBuildDate>Wed, 11 Jun 2025 00:00:00 +0000</lastBuildDate>
+      <item>
+          <title>Building CRD-Xray: An AI Agent for Kubernetes Custom Operators</title>
+          <pubDate>Wed, 11 Jun 2025 00:00:00 +0000</pubDate>
+          <author>Unknown</author>
+          <link>https://vedangj044.github.io/blog/crd-xray/</link>
+          <guid>https://vedangj044.github.io/blog/crd-xray/</guid>
+          <description xml:base="https://vedangj044.github.io/blog/crd-xray/">&lt;p&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vedangj044&#x2F;cn-agent&quot;&gt;Github&lt;&#x2F;a&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;If you&#x27;re running Kubernetes seriously, chances are you&#x27;ve built a bunch of custom operators for your organization. These operators work wonders. But I&#x27;ve always felt something was missing — context. The kind of context that helps new engineers understand what’s happening, or helps me debug when things break. That’s where the idea for &lt;strong&gt;CRD-Xray&lt;&#x2F;strong&gt; started.&lt;&#x2F;p&gt;
+&lt;p&gt;My goal is simple: collect as much useful data from custom operators as possible, feed it into an AI agent, and use that agent to answer questions like, “What does this CRD do?”, “Which controller manages it?”, or “Why is it failing?”&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;the-4-problems-i-m-trying-to-solve&quot;&gt;The 4 Problems I&#x27;m Trying to Solve&lt;&#x2F;h2&gt;
+&lt;p&gt;To explain what CRD-Xray aims to solve, here are four specific pain points I’ve faced:&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;1-no-documentation-for-custom-operators&quot;&gt;1. No Documentation for Custom Operators&lt;&#x2F;h4&gt;
+&lt;p&gt;Open-source tools from CNCF are well-documented, and you can find answers on forums and StackOverflow. But when it comes to internal, organization-specific operators — good luck. There’s usually zero documentation or outdated README files that don’t help.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;2-debugging-is-a-nightmare&quot;&gt;2. Debugging is a Nightmare&lt;&#x2F;h4&gt;
+&lt;p&gt;There’s no built-in mapping in Kubernetes between a controller and the CRDs it manages. Tracing logs, understanding how different tools interact, and piecing it all together manually is painful. Imagine if we could debug across all tools and logs in one go — yeah, I know, sounds far-fetched, but I want to try.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;3-mcp-integration&quot;&gt;3. MCP Integration&lt;&#x2F;h4&gt;
+&lt;p&gt;Since I’m already maintaining a database of CRDs, their controllers, logs, and resources, this makes a great base layer of context for future AI agents. By exposing it via MCP (Model Context Provider), I could let even smarter agents use this data later on.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;4-crd-metrics&quot;&gt;4. CRD Metrics&lt;&#x2F;h4&gt;
+&lt;p&gt;We have Prometheus exporters for most core components, but custom CRDs often go unmonitored. Having a way to track their versions, usage patterns, and metrics across clusters could be super helpful.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;step-1-data-collection&quot;&gt;Step 1: Data Collection&lt;&#x2F;h2&gt;
+&lt;p&gt;To solve any of the above, I had to first collect the right data. I started by building a Kubernetes controller using the &lt;strong&gt;Kopf&lt;&#x2F;strong&gt; framework. It runs inside the cluster and periodically collects:&lt;&#x2F;p&gt;
+&lt;ol&gt;
+&lt;li&gt;All the CRDs installed on the cluster&lt;&#x2F;li&gt;
+&lt;li&gt;All events involving those CRDs&lt;&#x2F;li&gt;
+&lt;li&gt;All the CRs (custom resources) for each CRD&lt;&#x2F;li&gt;
+&lt;li&gt;All pods — this list gets passed to an LLM to figure out which pod might be the controller for a given CRD&lt;&#x2F;li&gt;
+&lt;li&gt;Logs from the identified controller pod (fetched every hour for now)&lt;&#x2F;li&gt;
+&lt;&#x2F;ol&gt;
+&lt;p&gt;I store metadata like CRD schemas, controller names, and resource names in a &lt;strong&gt;SQLite&lt;&#x2F;strong&gt; database. For everything else — logs, manifests, etc. — I use &lt;strong&gt;Qdrant&lt;&#x2F;strong&gt; as a vector database.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;why-kopf&quot;&gt;Why &lt;a href=&quot;https:&#x2F;&#x2F;kopf.readthedocs.io&#x2F;en&#x2F;stable&#x2F;&quot;&gt;Kopf&lt;&#x2F;a&gt;?&lt;&#x2F;h3&gt;
+&lt;p&gt;Choosing Kopf was an architectural decision. I wanted this controller to live &lt;em&gt;inside&lt;&#x2F;em&gt; the cluster. That way, it can continuously monitor and collect data without relying on external scripts or cron jobs. In the future, the idea is that you could just &lt;code&gt;helm install&lt;&#x2F;code&gt; this tool, and boom — your AI agent is up and running.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;step-2-the-langgraph-agent&quot;&gt;Step 2: The &lt;a href=&quot;https:&#x2F;&#x2F;langchain-ai.github.io&#x2F;langgraph&#x2F;&quot;&gt;LangGraph&lt;&#x2F;a&gt; Agent&lt;&#x2F;h2&gt;
+&lt;p&gt;Once the controller is up and collecting data, the next step is building an agent that can answer queries. I used &lt;strong&gt;LangGraph&lt;&#x2F;strong&gt; to create a simple state-based AI agent with this flow:&lt;&#x2F;p&gt;
+&lt;pre style=&quot;background-color:#2b303b;color:#6c7079;&quot;&gt;&lt;code&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;user input -&amp;gt; SQL agent -&amp;gt; Vector agent -&amp;gt; Synthesizer -&amp;gt; Final output
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;img alt=&quot;AI agents graph&quot; src=&quot;https:&#x2F;&#x2F;i.ibb.co&#x2F;zh6NSx3j&#x2F;Screenshot-2025-06-12-at-1-02-14-AM.png&quot;&#x2F;&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;SQL Agent:&lt;&#x2F;strong&gt; Uses LangChain’s &lt;code&gt;SQLDatabaseToolkit&lt;&#x2F;code&gt; to generate and run SQL queries based on natural language input&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Vector Agent:&lt;&#x2F;strong&gt; Uses &lt;code&gt;langchain_qdrant&lt;&#x2F;code&gt; to search the vector store for relevant logs or manifests&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Synthesizer:&lt;&#x2F;strong&gt; Combines the results from the SQL and vector search to generate a final answer using Claude (via &lt;code&gt;langchain_anthropic&lt;&#x2F;code&gt;)&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;It’s surprisingly effective for questions like:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;“How many CRs exist for &lt;code&gt;FooBar&lt;&#x2F;code&gt;?”&lt;&#x2F;li&gt;
+&lt;li&gt;“What does the controller for &lt;code&gt;FooBar&lt;&#x2F;code&gt; do?”&lt;&#x2F;li&gt;
+&lt;li&gt;“Show me logs from the controller when resource X failed.”&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h3 id=&quot;the-agent-in-action&quot;&gt;The Agent in Action&lt;&#x2F;h3&gt;
+&lt;p&gt;The whole point of combining structured (SQL) and unstructured (logs) data is to get deeper, more helpful answers. The agent takes in the query, runs SQL to extract basic info, does a vector search using that context, and then synthesizes a human-readable answer. It’s not perfect yet, but it’s already saving me time.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;what-didn-t-work-yet&quot;&gt;What Didn’t Work (Yet)&lt;&#x2F;h3&gt;
+&lt;p&gt;I also played around with &lt;strong&gt;LangGraph Studio&lt;&#x2F;strong&gt; and &lt;strong&gt;LangSmith&lt;&#x2F;strong&gt;. While both are promising, they still need quite a bit of manual setup and tuning. I’ve shelved that for now, but will revisit once the core system is solid.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;what-s-next&quot;&gt;What’s Next?&lt;&#x2F;h2&gt;
+&lt;p&gt;There’s a lot I want to improve:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Make the agent more robust and conversational&lt;&#x2F;li&gt;
+&lt;li&gt;Build a proper test suite&lt;&#x2F;li&gt;
+&lt;li&gt;Create a Helm chart for easy deployment&lt;&#x2F;li&gt;
+&lt;li&gt;Test it on more and more custom CRDs in the wild&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;This is still very much a work in progress, but I’m excited about where it’s headed. If you’ve dealt with the same pain points, or just find this idea interesting, I’d love to hear your thoughts.&lt;&#x2F;p&gt;
+&lt;p&gt;Thanks for reading!&lt;&#x2F;p&gt;
+</description>
+      </item>
+      <item>
+          <title>MySQL on Statefulsets</title>
+          <pubDate>Fri, 04 Apr 2025 00:00:00 +0000</pubDate>
+          <author>Unknown</author>
+          <link>https://vedangj044.github.io/blog/mysql-statefulset/</link>
+          <guid>https://vedangj044.github.io/blog/mysql-statefulset/</guid>
+          <description xml:base="https://vedangj044.github.io/blog/mysql-statefulset/">&lt;p&gt;The following kubernetes documentation and examples are outdated with the recent mysql version&lt;br &#x2F;&gt;
+https:&#x2F;&#x2F;kubernetes.io&#x2F;docs&#x2F;concepts&#x2F;workloads&#x2F;controllers&#x2F;statefulset&#x2F;&lt;&#x2F;p&gt;
+&lt;p&gt;So I took it upon myself to run the latest MySQL version with 2 reader replicas and 1 write replica. In this post, I&#x27;ll walk you through my approach step-by-step, explaining how I managed to set up a MySQL cluster using Kubernetes StatefulSets. Grab your favorite cup of coffee, and let’s dive in!&lt;&#x2F;p&gt;
+&lt;hr &#x2F;&gt;
+&lt;h3 id=&quot;the-overall-approach&quot;&gt;The Overall Approach&lt;&#x2F;h3&gt;
+&lt;p&gt;Here’s the quick rundown of what I did:&lt;&#x2F;p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;ConfigMap Magic:&lt;&#x2F;strong&gt;&lt;br &#x2F;&gt;
+I started by creating a ConfigMap that bundles two key scripts:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;&lt;code&gt;init-master.sh&lt;&#x2F;code&gt;&lt;&#x2F;strong&gt;: This script configures the master node by setting up replication parameters.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;&lt;code&gt;init-slave.sh&lt;&#x2F;code&gt;&lt;&#x2F;strong&gt;: This script is designed for the slave nodes, ensuring they connect and replicate from the master.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;These scripts are vital as they initialize the replication setup for MySQL.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;StatefulSet Setup:&lt;&#x2F;strong&gt;&lt;br &#x2F;&gt;
+The heart of the deployment is a StatefulSet, which I configured to handle both the master and slave roles based on the pod hostname.&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Init Container:&lt;&#x2F;strong&gt;&lt;br &#x2F;&gt;
+Before the main containers kick in, an init container checks the hostname. If it’s the first pod (i.e., hostname ends with &lt;code&gt;-0&lt;&#x2F;code&gt;), it’s designated as the master; otherwise, it’s recognized as a slave. It then copies the appropriate script (either &lt;code&gt;init-master.sh&lt;&#x2F;code&gt; or &lt;code&gt;init-slave.sh&lt;&#x2F;code&gt;) from the ConfigMap.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Main &amp;amp; Sidecar Containers:&lt;&#x2F;strong&gt;&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Main Container:&lt;&#x2F;strong&gt; Runs MySQL 8.0 as expected.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Sidecar Container:&lt;&#x2F;strong&gt; Executes the copied script.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;strong&gt;Note:&lt;&#x2F;strong&gt; You can’t merge the functionality of an init container with a sidecar because the sidecar has to run &lt;em&gt;after&lt;&#x2F;em&gt; MySQL is fully up and running. This separation ensures the scripts execute at the appropriate time for proper replication setup.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Service Configuration:&lt;&#x2F;strong&gt;&lt;br &#x2F;&gt;
+Once the StatefulSet is up, I created two kinds of services:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Headless Service:&lt;&#x2F;strong&gt;&lt;br &#x2F;&gt;
+This service lets you connect directly to any container. Specifically, I use it to connect to the master node via &lt;code&gt;mysql-svc-0&lt;&#x2F;code&gt;.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Replica Service:&lt;&#x2F;strong&gt;&lt;br &#x2F;&gt;
+With a label selector of &lt;code&gt;replica&lt;&#x2F;code&gt;, this service is tailored to connect exclusively to the reader nodes.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Labeling the Readers:&lt;&#x2F;strong&gt;&lt;br &#x2F;&gt;
+The final step was to apply specific labels to the two reader nodes. This labeling makes it easy to differentiate between the master and the replicas when routing read and write traffic.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ol&gt;
+&lt;hr &#x2F;&gt;
+&lt;h3 id=&quot;putting-it-all-together&quot;&gt;Putting It All Together&lt;&#x2F;h3&gt;
+&lt;p&gt;Below is a snippet where you’d copy and paste your YAML files:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;yaml&quot; style=&quot;background-color:#2b303b;color:#6c7079;&quot; class=&quot;language-yaml &quot;&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span style=&quot;font-style:italic;color:#5f697a;&quot;&gt;# - ConfigMap with init-master.sh and init-slave.sh
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;apiVersion&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;v1
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;kind&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;ConfigMap
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;metadata&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql-config
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;data&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;master.cnf&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#cd74e8;&quot;&gt;|
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;    [mysqld]
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;    log-bin=mysql-bin
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;    binlog-format=ROW
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;    server-id=1
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;slave.cnf&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#cd74e8;&quot;&gt;|
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;    [mysqld]
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;    server-id=2
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;init-master.sh&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#cd74e8;&quot;&gt;|
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;    #!&#x2F;bin&#x2F;bash
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;    set -ex
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;    echo &amp;quot;Creating replication user...&amp;quot;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;    mysql -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD} &amp;lt;&amp;lt;EOF
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;    CREATE USER IF NOT EXISTS &amp;#39;replication&amp;#39;@&amp;#39;%&amp;#39;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;    IDENTIFIED WITH mysql_native_password BY &amp;#39;repl_password&amp;#39;;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;    GRANT REPLICATION SLAVE ON *.* TO &amp;#39;replication&amp;#39;@&amp;#39;%&amp;#39;;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;    FLUSH PRIVILEGES;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;    EOF
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;init-slave.sh&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#cd74e8;&quot;&gt;|
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;    #!&#x2F;bin&#x2F;bash
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;    set -ex
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;    echo &amp;quot;Waiting for master to be ready...&amp;quot;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;    until mysql -h 127.0.0.1 -h mysql-0.mysql -u root -p${MYSQL_ROOT_PASSWORD} \
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;-e &amp;quot;SELECT 1&amp;quot;; do
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;      &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;echo &amp;quot;Master is not ready yet...&amp;quot;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;      &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;sleep 3
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;done
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;echo &amp;quot;Getting master position...&amp;quot;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;MASTER_STATUS=$(mysql -h mysql-0.mysql -u root -p${MYSQL_ROOT_PASSWORD} \
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;-e &amp;quot;SHOW MASTER STATUS&amp;quot; --skip-column-names)
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;MASTER_LOG_FILE=$(echo $MASTER_STATUS | cut -f 1 -d &amp;#39; &amp;#39;)
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;MASTER_LOG_POS=$(echo $MASTER_STATUS | cut -f 2 -d &amp;#39; &amp;#39;)
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;echo &amp;quot;Stopping replica IO thread if running...&amp;quot;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD} \
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;-e &amp;quot;STOP REPLICA IO_THREAD FOR CHANNEL &amp;#39;&amp;#39;;&amp;quot;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;echo &amp;quot;Setting up slave with master log file&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;$MASTER_LOG_FILE \
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;and position&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;$MASTER_LOG_POS&amp;quot;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD} &amp;lt;&amp;lt;EOF
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;CHANGE MASTER TO
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;MASTER_HOST=&amp;#39;mysql-0.mysql&amp;#39;,
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;MASTER_USER=&amp;#39;replication&amp;#39;,
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;MASTER_PASSWORD=&amp;#39;repl_password&amp;#39;,
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;MASTER_LOG_FILE=&amp;#39;$MASTER_LOG_FILE&amp;#39;,
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;MASTER_LOG_POS=$MASTER_LOG_POS;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;START SLAVE;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;EOF
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD} &amp;lt;&amp;lt;EOF
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;SET GLOBAL super_read_only = 1
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;EOF
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;echo &amp;quot;Slave setup complete!&amp;quot;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;---
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;font-style:italic;color:#5f697a;&quot;&gt;# - StatefulSet definition for MySQL with init container and sidecar container
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;apiVersion&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;apps&#x2F;v1
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;kind&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;StatefulSet
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;metadata&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;spec&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;selector&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;matchLabels&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;      &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;app&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;serviceName&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;replicas&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#db9d63;&quot;&gt;3
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;template&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;metadata&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;      &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;labels&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;app&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;spec&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;      &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;initContainers&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;      - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;init-mysql
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;image&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql:8.0
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;command&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;bash
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;&amp;quot;-c&amp;quot;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#cd74e8;&quot;&gt;|
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;          set -ex
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;          # Generate server-id based on ordinal index
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;          [[ $HOSTNAME =~ -([0-9]+)$ ]] || exit 1
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;          ordinal=${BASH_REMATCH[1]}
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;          # Only the first pod (ordinal 0) is master
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;          if [[ $ordinal -eq 0 ]]; then
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;            cp &#x2F;mnt&#x2F;config-map&#x2F;master.cnf &#x2F;etc&#x2F;mysql&#x2F;conf.d&#x2F;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;          else
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;            # Update server-id for slaves
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;            cp &#x2F;mnt&#x2F;config-map&#x2F;slave.cnf &#x2F;etc&#x2F;mysql&#x2F;conf.d&#x2F;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;            sed -i &amp;quot;s&#x2F;server-id=2&#x2F;server-id=$((ordinal + 1))&#x2F;&amp;quot; \
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;&#x2F;etc&#x2F;mysql&#x2F;conf.d&#x2F;slave.cnf
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;fi
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;volumeMounts&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;conf
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;mountPath&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;&#x2F;etc&#x2F;mysql&#x2F;conf.d
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;config-map
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;mountPath&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;&#x2F;mnt&#x2F;config-map
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;      &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;containers&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;      - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;image&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql:8.0
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;env&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;MYSQL_ROOT_PASSWORD
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;value&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;&amp;quot;rootpassword&amp;quot;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;ports&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;containerPort&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#db9d63;&quot;&gt;3306
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;volumeMounts&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;data
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;mountPath&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;&#x2F;var&#x2F;lib&#x2F;mysql
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;conf
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;mountPath&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;&#x2F;etc&#x2F;mysql&#x2F;conf.d
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;config-map
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;mountPath&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;&#x2F;mnt&#x2F;config-map
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;resources&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;requests&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;            &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;cpu&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;500m
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;            &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;memory&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;1Gi
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;livenessProbe&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;exec&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;            &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;command&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;            - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysqladmin
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;            - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;ping
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;            - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;-u
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;            - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;root
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;            - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;-prootpassword
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;initialDelaySeconds&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#db9d63;&quot;&gt;30
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;periodSeconds&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#db9d63;&quot;&gt;10
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;timeoutSeconds&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#db9d63;&quot;&gt;5
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;readinessProbe&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;exec&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;            &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;command&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;            - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;            - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;-u
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;            - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;root
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;            - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;-prootpassword
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;            - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;-e
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;            - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;SELECT 1
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;initialDelaySeconds&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#db9d63;&quot;&gt;5
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;periodSeconds&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#db9d63;&quot;&gt;2
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;timeoutSeconds&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#db9d63;&quot;&gt;1
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;      - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;replication-init
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;image&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql:8.0
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;command&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;bash
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;&amp;quot;-c&amp;quot;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#cd74e8;&quot;&gt;|
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;          set -ex
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;          # Wait for MySQL to be ready
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;          until mysqladmin ping -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD}; do
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;            echo &amp;quot;Waiting for MySQL to be ready...&amp;quot;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;            sleep 2
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;          done
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;          # Determine if master or slave based on hostname
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;          [[ $HOSTNAME =~ -([0-9]+)$ ]] || exit 1
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;          ordinal=${BASH_REMATCH[1]}
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;          if [[ $ordinal -eq 0 ]]; then
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;            echo &amp;quot;Initializing master...&amp;quot;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;            # Execute the script content instead of trying to run the file
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;            bash -c &amp;quot;$(cat &#x2F;mnt&#x2F;config-map&#x2F;init-master.sh)&amp;quot;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;          else
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;            echo &amp;quot;Initializing slave...&amp;quot;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;            # Execute the script content instead of trying to run the file
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;            bash -c &amp;quot;$(cat &#x2F;mnt&#x2F;config-map&#x2F;init-slave.sh)&amp;quot;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;          fi
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;          # Keep container running
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;          tail -f &#x2F;dev&#x2F;null
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;env&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;MYSQL_ROOT_PASSWORD
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;value&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;&amp;quot;rootpassword&amp;quot;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;volumeMounts&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;config-map
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;mountPath&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;&#x2F;mnt&#x2F;config-map
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;      &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;volumes&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;      - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;conf
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;emptyDir&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: {}
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;      - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;config-map
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;configMap&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql-config
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;volumeClaimTemplates&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;metadata&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;      &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;data
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;spec&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;      &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;accessModes&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: [&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;&amp;quot;ReadWriteOnce&amp;quot;&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;]
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;      &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;resources&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;requests&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;          &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;storage&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;10Gi
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;---
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;font-style:italic;color:#5f697a;&quot;&gt;# - Service definitions for headless service and replica service
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;apiVersion&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;v1
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;kind&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;Service
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;metadata&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;labels&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;app&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;spec&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;ports&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;port&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#db9d63;&quot;&gt;3306
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;clusterIP&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;None
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;selector&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;app&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;---
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;apiVersion&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;v1
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;kind&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;Service
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;metadata&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql-read
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;labels&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;app&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;app.kubernetes.io&#x2F;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;readonly&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;&amp;quot;true&amp;quot;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;spec&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;ports&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;name&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;port&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#db9d63;&quot;&gt;3306
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;selector&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;app&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;mysql
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;replica&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;&amp;quot;true&amp;quot;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;---
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;pre style=&quot;background-color:#2b303b;color:#6c7079;&quot;&gt;&lt;code&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;# - Commands for applying labels to reader nodes
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;kubectl label pods mysql-1 replica=true
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;kubectl label pods mysql-2 replica=true
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;hr &#x2F;&gt;
+&lt;h3 id=&quot;final-thoughts&quot;&gt;Final Thoughts&lt;&#x2F;h3&gt;
+&lt;p&gt;This is a decent approach for using MySQL with StatefulSets. It leverages MySQL’s default replication mechanism to create a small MySQL cluster. For a user application, say a Django project, this setup provides database routers that allow you to specify separate configurations for reader and write databases.&lt;&#x2F;p&gt;
+&lt;p&gt;Just a quick heads up:&lt;br &#x2F;&gt;
+Be mindful that all nodes are in the same Availability Zone (AZ) to avoid incurring extra data transfer charges. While this isn&#x27;t a production-ready solution, the intention was more to showcase how Kubernetes StatefulSets can be utilized to run MySQL replicas—an educational dive into blending Kubernetes with traditional database replication strategies.&lt;&#x2F;p&gt;
+&lt;p&gt;Hope this gives you a clearer picture of how you can run MySQL on Kubernetes with a modern twist. Happy coding and clustering!&lt;&#x2F;p&gt;
+</description>
+      </item>
+      <item>
+          <title>Breaking down common attack vectors on AWS</title>
+          <pubDate>Mon, 11 Nov 2024 00:00:00 +0000</pubDate>
+          <author>Unknown</author>
+          <link>https://vedangj044.github.io/blog/attack-vectors/</link>
+          <guid>https://vedangj044.github.io/blog/attack-vectors/</guid>
+          <description xml:base="https://vedangj044.github.io/blog/attack-vectors/">&lt;p&gt;With the proliferation of cloud computing, organizations are increasingly adopting services like AWS to scale their operations. However, the cloud presents unique challenges in securing assets. Notably, public IP addresses and user credentials emerge as some of the most significant attack vectors in cloud environments. This blog delves into the intricacies of these attack vectors, drawing from notable breaches to illustrate risks and explore effective mitigation strategies.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;high-profile-aws-breaches-lessons-learned&quot;&gt;High-Profile AWS Breaches: Lessons Learned&lt;&#x2F;h2&gt;
+&lt;p&gt;Some major breaches underscore how severe misconfigurations and permissions issues can be within AWS and cloud environments in general. &lt;strong&gt;Companies like Dropbox, Capital One, Twilio, and Mobikwik&lt;&#x2F;strong&gt; have suffered substantial data breaches due to cloud mismanagement. Key factors in these breaches included:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Over-privileged IAM credentials&lt;&#x2F;strong&gt;: Attackers often exploit excessive permissions granted to users or applications, allowing them to move laterally within a network or access sensitive data.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Misconfigured Firewalls&lt;&#x2F;strong&gt;: Many organizations fail to properly restrict traffic, inadvertently exposing their services to the open internet.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Public S3 Buckets&lt;&#x2F;strong&gt;: Misconfigured S3 storage buckets, accessible without authentication, have led to unauthorized access to sensitive data.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;These incidents highlight critical areas in cloud security that are often overlooked, reinforcing the need for strict security configurations and continuous monitoring.&lt;&#x2F;p&gt;
+&lt;hr &#x2F;&gt;
+&lt;h2 id=&quot;core-attack-vectors-in-the-cloud-public-ip-addresses-and-user-credentials&quot;&gt;Core Attack Vectors in the Cloud: Public IP Addresses and User Credentials&lt;&#x2F;h2&gt;
+&lt;h3 id=&quot;1-public-ip-addresses&quot;&gt;1. Public IP Addresses&lt;&#x2F;h3&gt;
+&lt;p&gt;Public IPs allow resources to be accessible from anywhere, making them highly vulnerable if not properly secured. Key risks associated with public IPs include:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Exposed EC2 Instances&lt;&#x2F;strong&gt;: Misconfigured security groups can leave EC2 instances open to the internet, making them vulnerable to attack.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Public S3 Buckets and RDS Instances&lt;&#x2F;strong&gt;: Publicly accessible storage or database instances are critical vulnerabilities, especially if they contain sensitive data.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h4 id=&quot;severity-assessment&quot;&gt;Severity Assessment:&lt;&#x2F;h4&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Critical&lt;&#x2F;strong&gt;: EC2 instances with misconfigured security groups are at high risk and should be secured immediately.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;High to Low&lt;&#x2F;strong&gt;: While public S3 buckets and RDS instances are less commonly exposed, they still represent significant risks. Public access to these services, even in test or POC environments, can lead to unintended data exposure.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h3 id=&quot;2-user-credentials&quot;&gt;2. User Credentials&lt;&#x2F;h3&gt;
+&lt;p&gt;Compromised credentials are one of the most frequent causes of cloud breaches. In AWS, this includes:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Credentials Exposed in Code Repositories&lt;&#x2F;strong&gt;: Hard-coded credentials or secrets accidentally pushed to public repositories (like GitHub) expose systems to direct attacks.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Integration with Third-Party Tools&lt;&#x2F;strong&gt;: Tools like New Relic, Databricks, and Snowflake often have API access to AWS. If these tools are compromised, attackers can pivot into AWS resources.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Credentials Stored on EC2 Instances or EKS Pods&lt;&#x2F;strong&gt;: If an EC2 instance or containerized application with embedded credentials is compromised, attackers gain access.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Weak Credentials in Communication Channels&lt;&#x2F;strong&gt;: Credentials shared in tools like Slack (e.g., Slack tokens) present vulnerabilities if the chat application is breached.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h4 id=&quot;severity-assessment-1&quot;&gt;Severity Assessment:&lt;&#x2F;h4&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Critical&lt;&#x2F;strong&gt;: Credentials leaked in code repositories or used by third-party tools pose immediate risks.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;High to Low&lt;&#x2F;strong&gt;: Credentials stored within EC2 or shared across Slack channels are also high-risk but less immediately exploitable.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;hr &#x2F;&gt;
+&lt;h2 id=&quot;mitigation-strategies&quot;&gt;Mitigation Strategies&lt;&#x2F;h2&gt;
+&lt;h3 id=&quot;mitigating-public-ip-risks&quot;&gt;Mitigating Public IP Risks&lt;&#x2F;h3&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Technical Solutions&lt;&#x2F;strong&gt;&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Automated IP Monitoring&lt;&#x2F;strong&gt;: Develop scripts to periodically fetch and update public IPs, ensuring a current inventory.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Public Exposure Flagging&lt;&#x2F;strong&gt;: Flag any IPs associated with publicly exposed services and assess exposure risks.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;NMAP Scans on Public IPs&lt;&#x2F;strong&gt;: Regularly perform scans to detect open ports and vulnerabilities.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Automated IP List Refresh&lt;&#x2F;strong&gt;: Configure the script to refresh IP lists automatically, keeping your monitoring up to date.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Process Improvements&lt;&#x2F;strong&gt;&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Approval Requirements for New IPs&lt;&#x2F;strong&gt;: Require security team approval for all new public IP provisions to ensure each IP is justified and secure.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Enhanced Security Monitoring&lt;&#x2F;strong&gt;&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Request Logging&lt;&#x2F;strong&gt;: Log each request to publicly accessible IPs to monitor for unusual access patterns.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Web Application Firewall (WAF)&lt;&#x2F;strong&gt;: Implement a WAF to help mitigate attacks on exposed services.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Rate Limiting and DoS Simulation&lt;&#x2F;strong&gt;: Apply rate limits to public IPs and periodically simulate DoS attacks to test the effectiveness of rate limiting.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ol&gt;
+&lt;h3 id=&quot;mitigating-risks-from-user-credentials&quot;&gt;Mitigating Risks from User Credentials&lt;&#x2F;h3&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Technical Solutions&lt;&#x2F;strong&gt;&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Multi-Factor Authentication (MFA)&lt;&#x2F;strong&gt;: Enforce MFA for all human users, making it significantly harder for attackers to exploit stolen credentials.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Role-Based Access Control&lt;&#x2F;strong&gt;: Avoid granting IAM or administrative privileges to service accounts, restricting elevated privileges only to human users with clear need.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Credential Rotation&lt;&#x2F;strong&gt;: Rotate IAM service account credentials every 90 days, minimizing the impact of compromised credentials.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Vault Integration for Secret Management&lt;&#x2F;strong&gt;: Use Vault or similar tools for securely managing and rotating credentials, reducing the risk of exposure.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Monitoring and Usage&lt;&#x2F;strong&gt;&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;CloudTrail and SIEM Integration&lt;&#x2F;strong&gt;: Enable CloudTrail logging and integrate it with a SIEM tool for real-time monitoring and alerting on anomalous activity.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Activity Monitoring&lt;&#x2F;strong&gt;: Continuously monitor IAM user activity to detect unusual usage patterns that may indicate compromised credentials.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Process Improvements&lt;&#x2F;strong&gt;&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Distinguishing Human and Automated Users&lt;&#x2F;strong&gt;: Clearly separate human and automated user accounts to control permissions more effectively.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Exit Notifications&lt;&#x2F;strong&gt;: Notify IT, Security, and relevant teams when a user exits to prevent any orphaned access.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;OAuth-Only Tools&lt;&#x2F;strong&gt;: Procure only tools that support OAuth to enhance security in third-party integrations.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ol&gt;
+&lt;hr &#x2F;&gt;
+&lt;h2 id=&quot;summary&quot;&gt;Summary&lt;&#x2F;h2&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;Primary Attack Vectors&lt;&#x2F;strong&gt;: The most significant attack vectors in cloud environments are public IP addresses and user credentials, as they represent entry points that attackers can exploit directly.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Mitigation through Review and Monitoring&lt;&#x2F;strong&gt;: Regularly reviewing and securing public IPs, combined with robust credential management, can significantly reduce exposure risks.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Layered Security for Credentials&lt;&#x2F;strong&gt;: Keeping credentials updated, using tools like Vault, enforcing MFA, and integrating monitoring tools like CloudTrail create a layered defense strategy that strengthens cloud security.&lt;&#x2F;li&gt;
+&lt;&#x2F;ol&gt;
+&lt;p&gt;By understanding and addressing these attack vectors, organizations can fortify their cloud environments against common threats. The cloud provides substantial flexibility and scalability, but with it comes the responsibility of vigilant, continuous security.&lt;&#x2F;p&gt;
+</description>
+      </item>
+      <item>
+          <title>How to reduce the time it takes to patch vulnerabilities?</title>
+          <pubDate>Thu, 12 Oct 2023 00:00:00 +0000</pubDate>
+          <author>Unknown</author>
+          <link>https://vedangj044.github.io/blog/patching-images/</link>
+          <guid>https://vedangj044.github.io/blog/patching-images/</guid>
+          <description xml:base="https://vedangj044.github.io/blog/patching-images/">&lt;p&gt;&quot;Patch for CVE-2023-12345 that affected py-cool library from version v1.3 to v2.6 was released - v2.7&quot; mentioned the release note of py-cool library on GitHub.&lt;&#x2F;p&gt;
+&lt;p&gt;This statement can have two distinct reactions by all the people using py-cool. For a few teams, it happens to be a sigh of relief, as they can now see their CI colored green, while for a few other teams, it could just be a blip in the ocean - one more patch, one more vulnerability. What differentiates both these teams? which one is the better state to be in? and how can we go from being the second team to the first? Let&#x27;s explore this.&lt;&#x2F;p&gt;
+&lt;p&gt;A lot of what I am going to share in this article is just the elaboration of the following 2 words:
+PROACTIVE MAINTAINCE. Yes, that&#x27;s it. If you already understand where we are headed, you can go back and sip your sangria.&lt;&#x2F;p&gt;
+&lt;p&gt;Using third-party libraries is essential to software development. The important point is to always consider the tradeoff between the functionality the library offers vs. its maintenance overhead. This is our first key point:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Choose Dependencies Wisely:
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Verify the Source&lt;&#x2F;strong&gt;: Ensure that the source of your dependencies is reputable and reliable. Trustworthy sources are less likely to introduce vulnerabilities or abandon their projects.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Verify Maintainability&lt;&#x2F;strong&gt;: Assess the project&#x27;s maintainability by checking the frequency of updates and the responsiveness of maintainers to issues and pull requests.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Consider Overhead&lt;&#x2F;strong&gt;: Every dependency adds complexity and potential maintenance overhead. Whenever possible, avoid dependencies that aren&#x27;t critical to your project&#x27;s functionality.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Once you have decided to go ahead and use the library. You need to constantly listen to what the maintainers have to say.&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Communicate with the Community
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Engage with the Community&lt;&#x2F;strong&gt;: Dependencies with active communities are often more reliable. Interact with community members, ask questions, and provide feedback.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Subscribe to Releases&lt;&#x2F;strong&gt;: Stay informed about updates by subscribing to dependency releases. Regular updates can include critical security fixes and new features.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Changelogs&lt;&#x2F;strong&gt;: Pay attention to changelogs to understand what changes have been made in each update. This information can help you assess the impact of updates on your project.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Direct Communication&lt;&#x2F;strong&gt;: Don&#x27;t hesitate to communicate directly with dependency maintainers. Building a rapport can be invaluable when troubleshooting issues or requesting assistance.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Now that you know who is writing the code you use. You need to stay updated with the new features and patches they are releasing.&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Plan Regular Dependency Reviews
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Set a Schedule&lt;&#x2F;strong&gt;: Establish a routine for dependency reviews, aiming to conduct them at least every two weeks. Consistency is key to managing dependencies effectively.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Update Direct Dependencies&lt;&#x2F;strong&gt;: Prioritize updating direct dependencies as they directly impact your project&#x27;s functionality. Pay attention to deprecation warnings or compatibility issues.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Address Backlogs&lt;&#x2F;strong&gt;: Don&#x27;t let dependency updates accumulate. Tackling a backlog can be time-consuming and compounding, leading to increased risk.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;While these are libraries that you introduced intentionally, there are tons of libraries working in the background. Docker, as we all know, does a great job and packaging these all the way to the kernel level. This ability of docker can be of great help, it allows us to use just what is required.&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Reduce Clutter in Docker Images
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Minimal Golden Images&lt;&#x2F;strong&gt;: Start with minimal golden images as the base for your containers. These lightweight images minimize the attack surface.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Trim Dependencies&lt;&#x2F;strong&gt;: Modify your golden images to include only the dependencies required by your application. Reducing the number of dependencies can enhance security and resource efficiency. For example, use &lt;code&gt;--no-install-recommends&lt;&#x2F;code&gt; with &lt;code&gt;apt-get&lt;&#x2F;code&gt; in Debian-based images to avoid installing unnecessary packages.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;While you do your best, there would still be a good chance that you have to keep support for outdated software. For example - You may be supporting a new version of a database but other microservices are still on the old versions, thus you can&#x27;t update. The best thing to do here is to mark all the code that would be deprecated and assign alternatives to each.&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Separate Outdated Code from Your Core
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Modular Approach&lt;&#x2F;strong&gt;: Maintain outdated or deprecated code as separate modules or packages. This allows you to update or discard them more easily when dependencies require changes.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Finally, testing is an investment you need to make&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;End-to-End Tests are Your Best Friends
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Test Coverage&lt;&#x2F;strong&gt;: Develop E2E tests that cover critical aspects of your application. These tests act as a safety net to catch issues caused by dependency updates.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Automate Testing&lt;&#x2F;strong&gt;: Automate your E2E tests and integrate them into your continuous integration (CI) pipeline. Automated testing ensures that tests are consistently executed.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;In conclusion, We need to understand that software engineering is not a technical problem, it rather is a socio-technical problem. As developers, we can&#x27;t afford to overlook the social aspect. People leaving the organization, new people joining, dependencies being maintained, dependencies being archived - These are not rare events, we need to make our products resilient to them.&lt;&#x2F;p&gt;
+&lt;p&gt;The above steps are elementary and an initiation of good processes. Adhering to them can surely help us obviate vulnerabilities and reduce the time to patch them. Feel free to share what you think about the same, and as always&lt;&#x2F;p&gt;
+&lt;p&gt;Thanks for reading!&lt;&#x2F;p&gt;
+</description>
+      </item>
+      <item>
+          <title>MongoDB Aggregation for Data Analysis</title>
+          <pubDate>Thu, 14 Sep 2023 00:00:00 +0000</pubDate>
+          <author>Unknown</author>
+          <link>https://vedangj044.github.io/blog/mongodb-aggregation/</link>
+          <guid>https://vedangj044.github.io/blog/mongodb-aggregation/</guid>
+          <description xml:base="https://vedangj044.github.io/blog/mongodb-aggregation/">&lt;h4 id=&quot;why-did-mongodb-apply-for-a-job-because-it-wanted-to-find-its-true-aggregate-potential&quot;&gt;&lt;em&gt;Why did MongoDB apply for a job? Because it wanted to find its true aggregate potential!&lt;&#x2F;em&gt;&lt;&#x2F;h4&gt;
+&lt;p&gt;In the vibrant world of database management, MongoDB has carved a space for itself through its non-relational, document-oriented architecture, which offers a high level of flexibility and scalability. Among its myriad of functionalities, MongoDB’s aggregation framework stands tall, offering a potent tool in data analysis. Let’s delve deeper to explore this powerful feature and understand its underpinnings.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;understanding-aggregation&quot;&gt;Understanding Aggregation&lt;&#x2F;h4&gt;
+&lt;p&gt;Aggregation refers to the operation process used to process data that retrieves the computed results and summarized data. What sets MongoDB&#x27;s aggregation framework apart is its pipeline mechanism. This mechanism enables developers to break down complex operations into a series of smaller, more manageable stages. Each stage transforms the documents as they pass through the pipeline, using the output of one stage as the input for the next. This approach simplifies queries and enhances efficiency, making the aggregation process akin to a well-oiled assembly line in a manufacturing unit, with each stage adding value to the end product.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;essential-aggregation-functions&quot;&gt;Essential Aggregation Functions&lt;&#x2F;h4&gt;
+&lt;p&gt;Within the MongoDB aggregation pipeline, various functions play pivotal roles in data analysis. Let’s familiarize ourselves with some of them:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;$unwind&lt;&#x2F;strong&gt;: This function deconstructs an array field from the input documents to output a document for each element. Each output document replaces the array with an element value.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;$addField&lt;&#x2F;strong&gt;: As the name suggests, &lt;code&gt;$addField&lt;&#x2F;code&gt; adds new fields to documents, providing a pathway to add computed fields, establish conditional fields, or even reset existing field values.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;$group&lt;&#x2F;strong&gt;: This function groups documents by specified expression and outputs a document for each distinct grouping. It’s immensely useful in data analysis to aggregate information based on particular criteria.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h4 id=&quot;the-philosophy-of-in-database-processing&quot;&gt;The Philosophy of In-Database Processing&lt;&#x2F;h4&gt;
+&lt;p&gt;MongoDB promotes the philosophy of carrying out all data processing operations within the database itself. Consequently, pipelines run when we hit refresh on the UI, a practice that has transformed application development dynamics. This approach has facilitated the creation of a minimalist business logic layer that merely acts as a proxy between the database and the UI, steering clear of any hefty operations.&lt;&#x2F;p&gt;
+&lt;p&gt;This “in-database processing” ideology not only streamlines application development but also evades the necessity for Python notebooks or ad-hoc script works, heralding a simplified and efficient developmental cycle. The ease of writing these pipelines means that developers can swiftly sail through processes that would otherwise be labor-intensive, fostering a development environment where efficiency meets excellence.&lt;&#x2F;p&gt;
+&lt;p&gt;In our exploration, we stumbled upon an invaluable &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;ajeje93&#x2F;grafana-mongodb-docker&quot;&gt;Grafana plugin&lt;&#x2F;a&gt; designed specifically for MongoDB. Despite its lack of ongoing maintenance, the plugin operates seamlessly, facilitating a smooth connection between our MongoDB instance and the Grafana pod orchestrated through docker-compose. The setup process is wonderfully straightforward: add MongoDB as a data source, and you&#x27;re set. This simplicity extends to creating dynamic and visually appealing dashboards, a task made effortless as one can directly input aggregation pipelines into the data panel on Grafana dashboards. Thus, this plugin not only stands as a testament to the versatility and compatibility between MongoDB and Grafana but also opens up a vista of possibilities in dashboard visualization by leveraging MongoDB as a potent data source.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;the-backbone-implementation-at-the-database-level&quot;&gt;The Backbone: Implementation at the Database Level&lt;&#x2F;h4&gt;
+&lt;p&gt;The powerhouse behind MongoDB’s aggregation functionality is its implementation at the database level. At this juncture, the operations are close to the metal, leveraging low-level optimizations that bring about faster data retrieval and processing. Index utilization, for instance, ensures that the pipeline stages are executed with optimal efficiency, conserving system resources. By handling complex operations at the database tier, MongoDB ensures that data analysts and developers can wield the full might of the database&#x27;s analytical prowess without stepping out of the MongoDB environment.&lt;&#x2F;p&gt;
+&lt;p&gt;Moreover, the database’s robust structure accommodates aggregation commands that foster complex queries and generate extensive reports, establishing a firm ground for data analytics that thrives on precision and efficiency.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;conclusion&quot;&gt;Conclusion&lt;&#x2F;h3&gt;
+&lt;p&gt;In summation, MongoDB’s aggregation framework emerges as a formidable tool in the data analysis arena. By envisioning operations as a series of interconnected stages, MongoDB personifies the mantra of “divide and conquer,” simplifying complex tasks to facilitate seamless data analytics. Its functions, like &lt;code&gt;$unwind&lt;&#x2F;code&gt;, &lt;code&gt;$addField&lt;&#x2F;code&gt;, and &lt;code&gt;$group&lt;&#x2F;code&gt;, work in harmony to transform raw data into valuable insights, underpinning a data infrastructure that is streamlined, potent, and remarkably easy to work with.&lt;&#x2F;p&gt;
+&lt;p&gt;As we continue to forge ahead in the data-centric world, understanding and leveraging MongoDB’s aggregation for data analysis will not only make our lives tremendously easier but will also pioneer a pathway towards efficient and insightful data management.&lt;&#x2F;p&gt;
+</description>
+      </item>
+      <item>
+          <title>Securing AWS using Terrascan</title>
+          <pubDate>Tue, 27 Jun 2023 00:00:00 +0000</pubDate>
+          <author>Unknown</author>
+          <link>https://vedangj044.github.io/blog/terraform-sec/</link>
+          <guid>https://vedangj044.github.io/blog/terraform-sec/</guid>
+          <description xml:base="https://vedangj044.github.io/blog/terraform-sec/">&lt;p&gt;Using Static Code Analysis to Minimize Security Risk on AWS with Terraform and Terrascan&lt;&#x2F;p&gt;
+&lt;p&gt;Developing software is a complex process. With each line of code, there is potential for error. Security risks, in particular, can be devastating, leading to data breaches, system downtime, and even monetary loss. To help mitigate these risks when deploying infrastructure using Terraform on AWS, we can utilize static code analysis. A critical tool in this process is &lt;a href=&quot;https:&#x2F;&#x2F;runterrascan.io&#x2F;docs&#x2F;usage&#x2F;&quot;&gt;Terrascan&lt;&#x2F;a&gt;, which allows developers to automate the process of checking their Infrastructure as Code (IaC) for potential security vulnerabilities.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;what-is-terrascan&quot;&gt;What is Terrascan?&lt;&#x2F;h2&gt;
+&lt;p&gt;Terrascan is an open-source static code analysis tool that scans Terraform code for security vulnerabilities and compliance violations. Terrascan comes with pre-written policies that check for security best practices in your IaC code. It uses Rego, a policy-as-code language, to perform these checks.&lt;&#x2F;p&gt;
+&lt;p&gt;Terrascan has extensive support for AWS and other major cloud service providers, making it a highly versatile tool for cloud deployments.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;what-policies-are-checked-by-terrascan&quot;&gt;What Policies are Checked by Terrascan?&lt;&#x2F;h2&gt;
+&lt;p&gt;There are several crucial policies that Terrascan checks. Let&#x27;s focus on the most important ones related to AWS:&lt;&#x2F;p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;S3 Bucket Policies:&lt;&#x2F;strong&gt; It ensures that S3 buckets are not publicly accessible, which is crucial to preventing unauthorized access to stored data.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;IAM Policies:&lt;&#x2F;strong&gt; It checks that minimal access policies are in place for your IAM roles, to avoid granting unnecessary permissions to entities.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Encryption Policies:&lt;&#x2F;strong&gt; It confirms that data at rest and in transit are encrypted, offering a necessary layer of security.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Logging and Monitoring Policies:&lt;&#x2F;strong&gt; It validates that AWS CloudTrail and CloudWatch are enabled, to monitor and record activities for security analysis.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Security Group Rules:&lt;&#x2F;strong&gt; It checks for overly permissive inbound and outbound rules in security groups, which could expose your resources to potential attacks.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ol&gt;
+&lt;h2 id=&quot;integrating-terrascan-as-a-pre-commit-hook&quot;&gt;Integrating Terrascan as a Pre-commit Hook&lt;&#x2F;h2&gt;
+&lt;p&gt;Having static code analysis as a pre-commit hook is a best practice that can save you from pushing insecure code to the repository. Here are the steps to integrate Terrascan as a pre-commit hook:&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;strong&gt;Step 1:&lt;&#x2F;strong&gt; Install &lt;code&gt;pre-commit&lt;&#x2F;code&gt;. You can do so by running the following command:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;bash&quot; style=&quot;background-color:#2b303b;color:#6c7079;&quot; class=&quot;language-bash &quot;&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;pip&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt; install pre-commit
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;&lt;strong&gt;Step 2:&lt;&#x2F;strong&gt; Create a &lt;code&gt;.pre-commit-config.yaml&lt;&#x2F;code&gt; file in the root of your repository and add the following:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;yaml&quot; style=&quot;background-color:#2b303b;color:#6c7079;&quot; class=&quot;language-yaml &quot;&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;repos&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;  - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;repo&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;https:&#x2F;&#x2F;github.com&#x2F;tenable&#x2F;terrascan
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;rev&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;v1.8.0  &lt;&#x2F;span&gt;&lt;span style=&quot;font-style:italic;color:#5f697a;&quot;&gt;# Use the ref you want to point at
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;hooks&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;:
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;      - &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;id&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;terrascan
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;args&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;: [&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;&amp;#39;-f&amp;#39;&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;, &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;&amp;#39;yaml&amp;#39;&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;, &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;&amp;#39;-o&amp;#39;&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;, &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9acc76;&quot;&gt;&amp;#39;results&amp;#39;&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;]
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;This configuration specifies that the Terrascan tool will be run before every commit, outputting the results in a YAML file.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;strong&gt;Step 3:&lt;&#x2F;strong&gt; Install the pre-commit hook. Run the following command:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;bash&quot; style=&quot;background-color:#2b303b;color:#6c7079;&quot; class=&quot;language-bash &quot;&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span style=&quot;color:#eb6772;&quot;&gt;pre-commit&lt;&#x2F;span&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt; install
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;Now, whenever you try to commit changes, Terrascan will automatically scan your Terraform code. If any violations are found, the commit will be blocked, and you&#x27;ll need to fix the problems before the commit can proceed.&lt;&#x2F;p&gt;
+&lt;p&gt;Employing static code analysis with Terrascan in your Terraform code development process can significantly minimize the security risks when deploying resources on AWS. By integrating it as a pre-commit hook, you&#x27;ll ensure that every line of code committed to your repository adheres to security best practices, thus providing robust security for your cloud infrastructure.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;cutsom-policies&quot;&gt;Cutsom policies&lt;&#x2F;h2&gt;
+&lt;p&gt;Here&#x27;s how you can create custom policies in Terrascan:&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;strong&gt;Step 1: Define Conditions:&lt;&#x2F;strong&gt;
+Start by defining the conditions that will trigger a policy violation. These conditions are written in the Open Policy Agent&#x27;s (OPA) policy-as-code language, Rego. For example, you might create a condition that checks if an AWS S3 bucket is publicly readable.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;strong&gt;Step 2: Create a Rule:&lt;&#x2F;strong&gt;
+After defining your conditions, the next step is to create a rule. A rule in OPA is a named collection of conditions. The name of the rule is the policy violation that will be reported by Terrascan when the conditions of the rule are met.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;strong&gt;Step 3: Package the Rule:&lt;&#x2F;strong&gt;
+The rule you&#x27;ve created now needs to be part of a package. A package in OPA is akin to a namespace, grouping related rules together. This makes managing your policies easier, especially when dealing with a large number of rules.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;strong&gt;Step 4: Test the Policy:&lt;&#x2F;strong&gt;
+Before incorporating your custom policy into Terrascan, you should test it to make sure it works as expected. This can be done locally using OPA&#x27;s &lt;code&gt;opa eval&lt;&#x2F;code&gt; command, which lets you evaluate your policy against sample data to verify its correctness.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;strong&gt;Step 5: Load the Policy into Terrascan:&lt;&#x2F;strong&gt;
+Once you&#x27;re satisfied with your custom policy, it&#x27;s time to load it into Terrascan. This can be done through the &lt;code&gt;--policy&lt;&#x2F;code&gt; path command line argument when you run Terrascan. Alternatively, you can place your custom policies into a directory and set the &lt;code&gt;POLICY_PATH&lt;&#x2F;code&gt; environment variable to the directory&#x27;s path.&lt;&#x2F;p&gt;
+&lt;p&gt;By following these steps, you can extend the capabilities of Terrascan with your custom policies, enabling more robust security checks that cater specifically to your organization&#x27;s requirements.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;some-usecases-that-require-custom-policies&quot;&gt;Some usecases that require custom policies&lt;&#x2F;h3&gt;
+&lt;p&gt;Here are some scenarios where you might need to create custom policies:&lt;&#x2F;p&gt;
+&lt;ol&gt;
+&lt;li&gt;Validating the existence of DDoS prevention mechanisms, such as by assessing the request per second (RPS) limit on Kubernetes ingress.&lt;&#x2F;li&gt;
+&lt;li&gt;Ensuring that newly created resources adhere to appropriate tagging and naming conventions.&lt;&#x2F;li&gt;
+&lt;&#x2F;ol&gt;
+&lt;p&gt;In conclusion, utilizing Terrascan&#x27;s static code analysis for your Terraform AWS deployments, along with the ability to craft custom policies, brings robust and tailored security to your cloud infrastructure. It&#x27;s an indispensable tool for automating security best practices and ensuring compliance in your infrastructure-as-code development process. As always, Thanks for reading!&lt;&#x2F;p&gt;
+</description>
+      </item>
+      <item>
+          <title>Access Management Best Practices</title>
+          <pubDate>Wed, 18 Jan 2023 00:00:00 +0000</pubDate>
+          <author>Unknown</author>
+          <link>https://vedangj044.github.io/blog/access-management/</link>
+          <guid>https://vedangj044.github.io/blog/access-management/</guid>
+          <description xml:base="https://vedangj044.github.io/blog/access-management/">&lt;p&gt;We are all aware of the importance of data in today’s world. Anything valuable always comes with its security risks. The first step in the direction of protecting data is limiting who has access to it as much as possible. Identity and access management is a framework that helps us make sure that the right people have access to the right data and resources for the right duration.&lt;&#x2F;p&gt;
+&lt;p&gt;In an organization, we work with many tools, for example - VMs, Databases, SAAS tools, etc. All these tools have their approach to user management. It is a cumbersome process to manage the users across all the platforms as the organization scales and the number of users increases. Thus having policies and procedures for user creation, audit, and removal helps reduce the security risk.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;improving-the-onboarding-process&quot;&gt;Improving the onboarding process&lt;&#x2F;h2&gt;
+&lt;h3 id=&quot;centralizing-access-requests&quot;&gt;Centralizing access requests&lt;&#x2F;h3&gt;
+&lt;p&gt;The onboarding of each user on all platforms should be done by raising a request to a centralized system. The users should inform the team ( that manages the tool ) about why this particular access is required. This helps in tracking and compliance.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;enforcing-mfa&quot;&gt;Enforcing MFA&lt;&#x2F;h3&gt;
+&lt;p&gt;The tools should be configured to let users access the resources only after an MFA device is used to authenticate.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;using-emails-as-usernames&quot;&gt;Using emails as usernames&lt;&#x2F;h3&gt;
+&lt;p&gt;Emails are always unique in an organization. They should be used in place of generic usernames wherever possible. This practice can help us automate exit management.&lt;&#x2F;p&gt;
+&lt;p&gt;For places where usernames can’t be emails or for emails themselves, an organization should come up with a single pattern that is used to generate the username. This pattern must depend on something unique to the user like her employee ID. Example - &amp;lt;first_name&amp;gt;.&amp;lt;employee_id&amp;gt; etc.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;using-sso&quot;&gt;Using SSO&lt;&#x2F;h3&gt;
+&lt;p&gt;SSO should be used wherever possible. SSO should also be configured to allow only members approved by the admin of the tool to access the resource.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;least-privilege-possible&quot;&gt;Least Privilege Possible&lt;&#x2F;h3&gt;
+&lt;p&gt;This is considered a principal in the world of IAM. It refers to the practice of assigning minimum levels of access to users, only essential for their roles and duties. Every tool comes with RBAC - Role-based access control. These are policies that define what privileges a role has, a user is then given the required set of roles.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;enforcing-strong-password-policies&quot;&gt;Enforcing strong password policies&lt;&#x2F;h3&gt;
+&lt;p&gt;Users should only be allowed to create their accounts when they have a strong password. A strong password is at least 8 characters long, uses special characters, and avoids obvious or guessable phrases.&lt;&#x2F;p&gt;
+&lt;p&gt;Admin must apply password expiration policies.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;limiting-programmatic-access&quot;&gt;Limiting programmatic access&lt;&#x2F;h2&gt;
+&lt;h3 id=&quot;never-commit-credentials-to-git&quot;&gt;Never commit credentials to Git&lt;&#x2F;h3&gt;
+&lt;p&gt;Credentials used to interact with the APIs of any tool should be stored in a secured vault or environment variables and should never be hard-coded or committed to version control. CI integrations can help enforce this.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;timely-rotating-keys&quot;&gt;Timely rotating keys&lt;&#x2F;h3&gt;
+&lt;p&gt;Access keys should be rotated timely and must be different for all environments in a single tenant setup.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;taking-ownership&quot;&gt;Taking ownership&lt;&#x2F;h3&gt;
+&lt;p&gt;Each access key must be mapped to the human user who uses it.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;automate-offboarding-process&quot;&gt;Automate offboarding process&lt;&#x2F;h2&gt;
+&lt;h3 id=&quot;daily-user-audits&quot;&gt;Daily user audits&lt;&#x2F;h3&gt;
+&lt;p&gt;Whenever a user leaves the organization, his email can be searched for and deleted from all the tools he has access. This process can be automated in tools that provide SSO, or it can be done through automation scripts.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;transferring-ownership-of-access-keys&quot;&gt;Transferring ownership of access keys&lt;&#x2F;h3&gt;
+&lt;p&gt;After the offboarding of the user, if the keys are preserved they must be rotated and a new owner should be assigned to them.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;regular-access-audits-and-cleanup&quot;&gt;Regular access audits and cleanup&lt;&#x2F;h2&gt;
+&lt;p&gt;The security team performs regular cleanup and audit activities to identify misconfigurations like:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Over Privileged accounts&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;Credential sharing&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;Stale accounts&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;Policy validation&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h2 id=&quot;tips-for-users&quot;&gt;Tips for users&lt;&#x2F;h2&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Users should inform the Admin if they no longer need particular access and get it deleted.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;Users should never share their credentials.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;Users should never use the same password for more than one tool.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;Users should never store their credentials on stick notes and slack channels etc&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;In conclusion, IAM revolves around people, each digital identity must have an owner - a human user. While teams benefit from using SSO for the majority of the places, it always helps to handle matters of access management with keeping the involved risk in mind.&lt;&#x2F;p&gt;
+&lt;p&gt;Thank you&lt;&#x2F;p&gt;
+</description>
+      </item>
+      <item>
+          <title>Secure coding practices</title>
+          <pubDate>Wed, 26 Oct 2022 00:00:00 +0000</pubDate>
+          <author>Unknown</author>
+          <link>https://vedangj044.github.io/blog/secure-coding/</link>
+          <guid>https://vedangj044.github.io/blog/secure-coding/</guid>
+          <description xml:base="https://vedangj044.github.io/blog/secure-coding/">&lt;img alt=&quot;tweets regarding major cyber attacks&quot; src=&quot;https:&#x2F;&#x2F;user-images.githubusercontent.com&#x2F;43697446&#x2F;198199218-67db3563-0c9b-44df-b759-c39abd777bab.png&quot;&gt;
+&lt;p&gt;Hello Everyone! we all have come across tweets like these - Security vulnerabilities being detected and exploited. What causes security vulnerabilities in the first places ? Can it be prevented ? and most importantly, what do we learn from these ?&lt;&#x2F;p&gt;
+&lt;p&gt;Security vulnerabilities occur when a program does something it isn’t meant to do - A bug. It was there all along, maybe in the code you didn’t even know existed. For hackers, it is an opportunity and they would surely take advantage of it.
+Here, I would discuss some best practices that avoid common kinds of security vulnerabilities.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;common-pitfalls&quot;&gt;Common pitfalls&lt;&#x2F;h2&gt;
+&lt;h3 id=&quot;dynamically-executed-code&quot;&gt;Dynamically executed code&lt;&#x2F;h3&gt;
+&lt;p&gt;If a program is taking input from the user and executing it without any sanitization, it is like serving the integrity of the application on a silver platter to the bad actors. In the case of python, the use of eval statements is highly discouraged. These types of attacks are commonly addressed as injection attacks. An attack could inject SQL statement, HTML, or Javascript which if executed on the server side gives the attackers full control. &lt;a href=&quot;https:&#x2F;&#x2F;www.securecodewarrior.com&#x2F;blog&#x2F;what-is-log4j-log4shell&quot;&gt;Log4j&lt;&#x2F;a&gt; was an example of code injection. XCKD sums this up in a humorous comic.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;https:&#x2F;&#x2F;user-images.githubusercontent.com&#x2F;43697446&#x2F;198199425-76fcf1a5-cef6-4554-9051-338329cbedc3.png&quot; alt=&quot;exploits_of_a_mom&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;Developers need to make sure that there is no room for user input to get executed. Here user input can be input from the end user or even from another developer.&lt;&#x2F;p&gt;
+&lt;p&gt;SQL Injection can be avoided by using an ORM instead of writing raw queries. Mostly all popular ORMs come with built in sanitization features.&lt;&#x2F;p&gt;
+&lt;p&gt;Major Web frameworks like Django and Flask also come with their sanitization functions. This prevents potentially malicious HTML inputs.&lt;&#x2F;p&gt;
+&lt;p&gt;Other than this, Static application security testing ( SAST ) tools can also detect lines of code that execute a user input and flags them. Using a SAST check either on the local system or in the CI pipeline is recommended.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;hardcoding-credentials&quot;&gt;Hardcoding credentials&lt;&#x2F;h3&gt;
+&lt;p&gt;While building an application, it is a common requirement to fetch some data from an external API. It may be some payment gateway integration, cloud provider, or any other API. Generally, these APIs are authenticated and we need to specify the authentication key in the headers. While programming, developers often hardcode the credentials in the code itself. This becomes a serious issue when this code is pushed to a git repository because now the keys are visible to everybody who has access to the git repo. This problem amplifies when this git repo is public. Which means the keys are exposed to the entire world.&lt;&#x2F;p&gt;
+&lt;p&gt;Not only this practice is a blunder in security but it hinders the developer&#x27;s productivity too. Once the code becomes a part of a container image and is pushed to production, it becomes difficult to track and replace the credentials if needed.&lt;&#x2F;p&gt;
+&lt;p&gt;It is quite easy to avoid this&lt;&#x2F;p&gt;
+&lt;ol&gt;
+&lt;li&gt;Passing the credentials as env variables solves this problem. Developers can create a .env file if the number of variables is large. This .env file should never be checked out to git.&lt;&#x2F;li&gt;
+&lt;li&gt;Implementing secret scanning in pre-commit hooks. This can make sure no credentials are hardcoded before every commit. Similarly, secrets scanning can be added as a CI stage as well.&lt;&#x2F;li&gt;
+&lt;&#x2F;ol&gt;
+&lt;h3 id=&quot;parsing&quot;&gt;Parsing&lt;&#x2F;h3&gt;
+&lt;p&gt;Developers often need to deal with XML and YAML files. The first step in using any of these files is to parse them. There are a few common attacks through these parsers.&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;XML parsing&lt;&#x2F;p&gt;
+&lt;p&gt;Python XML standard library warns the users that using the etree, DOM, xmlrpc is not secure. An attacker can create a &lt;a href=&quot;https:&#x2F;&#x2F;en.wikipedia.org&#x2F;wiki&#x2F;Billion_laughs_attack&quot;&gt;DOS-style attack&lt;&#x2F;a&gt;. This attack references a piece of data in the same file and doing it over and over increases the RAM usage exponentially. Thus crashing the server.&lt;&#x2F;p&gt;
+&lt;p&gt;An attacker can also take advantage of an XML parser trying to fetch and parse resources from an external URL. This can be used to circumvent firewalls.&lt;&#x2F;p&gt;
+&lt;p&gt;The use of defuseXML is recommended as a fix.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;YAML parsing&lt;&#x2F;p&gt;
+&lt;p&gt;Using the &lt;code&gt;yaml.load&lt;&#x2F;code&gt; method can be used to make system calls, thus leaving you wide open to attack.&lt;&#x2F;p&gt;
+&lt;p&gt;The use of &lt;code&gt;yaml.safe_load&lt;&#x2F;code&gt; is recommended as a fix.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h2 id=&quot;general-tips&quot;&gt;General Tips&lt;&#x2F;h2&gt;
+&lt;h3 id=&quot;updating-dependencies&quot;&gt;Updating dependencies&lt;&#x2F;h3&gt;
+&lt;p&gt;Your python program surely uses one or the other libraries from PyPI. These libraries may contain some security vulnerabilities. If the library is maintained then these security vulnerabilities would be fixed in no time, once it is fixed it is our responsibility to update our dependencies to the proper version. Developers may find things breaking when a version upgrade on a dependency is done, but it is better than having a known vulnerability in your software.&lt;&#x2F;p&gt;
+&lt;p&gt;It is recommended that developers subscribe to the GitHub releases of the packages they use in their code and update the dependencies whenever a stable version is released.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;trusting-opensource&quot;&gt;Trusting opensource&lt;&#x2F;h3&gt;
+&lt;p&gt;No doubt, we all love open-source software, but while installing a package from PyPI for your project, we need to always verify that the library is well-maintained. Installing unknown or outdated packages can introduce security risks. Install either the popular libraries only or review the library before installing.&lt;&#x2F;p&gt;
+&lt;p&gt;That&#x27;s all from my side.&lt;&#x2F;p&gt;
+&lt;p&gt;Thank You&lt;&#x2F;p&gt;
+</description>
+      </item>
+      <item>
+          <title>GSoC Final Report</title>
+          <pubDate>Mon, 16 Aug 2021 00:00:00 +0000</pubDate>
+          <author>Unknown</author>
+          <link>https://vedangj044.github.io/blog/gsoc-phase2/</link>
+          <guid>https://vedangj044.github.io/blog/gsoc-phase2/</guid>
+          <description xml:base="https://vedangj044.github.io/blog/gsoc-phase2/">&lt;p&gt;The second evaluation for the Google Summer of Code 2021 has begun. This has been a wonderful experience so far. Fortunately, we have completed all the work promised in the previous blog post. Here are some quick links to the PRs, repos, and blogs related to my project.&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;drogue-iot&#x2F;drg&quot;&gt;DRG&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;drogue-iot&quot;&gt;Drogue IoT&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;docs.google.com&#x2F;document&#x2F;d&#x2F;1ZFId5MIQYGNgPKxFx-L817epOAYGG3AC5U6aDlVvLLA&#x2F;edit&quot;&gt;GSoC Proposal&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h3 id=&quot;prs&quot;&gt;PRs&lt;&#x2F;h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;drogue-iot&#x2F;drg&#x2F;commits?author=vedangj044&quot;&gt;All commits&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;drogue-iot&#x2F;drg&#x2F;pull&#x2F;81&quot;&gt;#81 Added primary trust anchor support&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;drogue-iot&#x2F;drg&#x2F;pull&#x2F;86&quot;&gt;#86 Added --cert flag&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;drogue-iot&#x2F;drg&#x2F;pull&#x2F;87&quot;&gt;#87 Added ca key verification&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;drogue-iot&#x2F;drg&#x2F;pull&#x2F;89&quot;&gt;#89 Added RSA key generation and algo parameter&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;drogue-iot&#x2F;drg&#x2F;pull&#x2F;90&quot;&gt;#90 Added custom key support&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;drogue-iot&#x2F;drg&#x2F;pull&#x2F;91&quot;&gt;#91 Added test cases trust.rs&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;drogue-iot&#x2F;rfcs&#x2F;pull&#x2F;9&quot;&gt;RFC&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h3 id=&quot;blog&quot;&gt;Blog&lt;&#x2F;h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;vedangj044.github.io&#x2F;blog&#x2F;gsoc-phase1&#x2F;&quot;&gt;GSoC Phase 1&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;vedangj044.github.io&#x2F;blog&#x2F;gsoc-community&#x2F;&quot;&gt;GSOC, Drogue IoT &amp;amp; the Community&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h2 id=&quot;implementation&quot;&gt;Implementation&lt;&#x2F;h2&gt;
+&lt;p&gt;We can authenticate our devices to Drogue IoT using either passwords or X.509 certificates. The latter method is better as it is scalable and more secure. To know more about the implementation kindly refer to the &lt;a href=&quot;https:&#x2F;&#x2F;vedangj044.github.io&#x2F;blog&#x2F;gsoc-phase1&#x2F;&quot;&gt;phase 1 blog&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;In the past few weeks, I added support for generating RSA keys using the &lt;a href=&quot;https:&#x2F;&#x2F;crates.io&#x2F;crates&#x2F;rsa&quot;&gt;RSA&lt;&#x2F;a&gt; crate. The private keys can be generated from any of the 3 algorithms - RSA, ECDSA, EdDSA. To specify an algorithm you would need to specify the &lt;code&gt;--algo&lt;&#x2F;code&gt; parameter.&lt;&#x2F;p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;drg trust create &amp;lt;app_name&amp;gt; --algo RSA&lt;&#x2F;code&gt;&lt;&#x2F;p&gt;
+&lt;&#x2F;blockquote&gt;
+&lt;p&gt;To save you the trouble of specifying the parameter every time, we leveraged the context functionality in drg. Thus you can specify a default signature algorithm for a context.&lt;&#x2F;p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;drg context set-default-algo RSA&lt;&#x2F;code&gt;&lt;&#x2F;p&gt;
+&lt;&#x2F;blockquote&gt;
+&lt;p&gt;Other than generating keys and certificates, users can also use existing keys. The only constraint here is it should strictly be in a PKCS8 format. To do this user can specify the &lt;code&gt;--key-input&lt;&#x2F;code&gt; parameter. To better understand the required format you can check out &lt;a href=&quot;https:&#x2F;&#x2F;docs.rs&#x2F;ring&#x2F;0.16.20&#x2F;ring&#x2F;signature&#x2F;struct.RsaKeyPair.html#method.from_pkcs8&quot;&gt;Ring&#x27;s documentation&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;Assuming you are using OpenSSL to generate&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;RSA keys&lt;&#x2F;p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;openssl genrsa -out key.pem 2048&lt;&#x2F;code&gt;&lt;&#x2F;p&gt;
+&lt;&#x2F;blockquote&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;ECDSA keys&lt;&#x2F;p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;openssl ecparam -name prime256v1 -genkey -noout -out key.pem&lt;&#x2F;code&gt;&lt;&#x2F;p&gt;
+&lt;&#x2F;blockquote&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;The only additional step is&lt;&#x2F;p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;openssl pkcs8 -topk8 -nocrypt -outform der -in key.pem &amp;gt; private.pk8&lt;&#x2F;code&gt;&lt;&#x2F;p&gt;
+&lt;&#x2F;blockquote&gt;
+&lt;p&gt;Now, you can use the &lt;code&gt;private.pk8&lt;&#x2F;code&gt; file to sign app or device certificates using&lt;&#x2F;p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;drg trust create &amp;lt;app_name&amp;gt; --key-input &amp;lt;key_file&amp;gt;&lt;&#x2F;code&gt;&lt;&#x2F;p&gt;
+&lt;&#x2F;blockquote&gt;
+&lt;p&gt;In the intial proposal, there were talks about creating a &quot;key-store&quot; to securely save all these private keys, but as we progressed the decision about where to store the keys was left to the user. That&#x27;s when I thought, it would be a good idea to demonstrate how to store keys in a solution like &lt;a href=&quot;https:&#x2F;&#x2F;www.lastpass.com&#x2F;&quot;&gt;LastPass&lt;&#x2F;a&gt; and use it in drg. Frankly, it is just some &#x27;terminal trickery&#x27; :).&lt;&#x2F;p&gt;
+&lt;p&gt;Assuming you have LastPass cli installed, and you are logged in DRG and LastPassCli. To store app private key&lt;&#x2F;p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;printf &quot;Private Key: %s\n&quot; &quot;$(drg trust create --app app_name)&quot; | lpass add --non-interactive --sync=now &quot;app_name&quot; --note-type=ssh-key&lt;&#x2F;code&gt;&lt;&#x2F;p&gt;
+&lt;&#x2F;blockquote&gt;
+&lt;p&gt;Now, to use that key to sign device cert+key&lt;&#x2F;p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;drg trust enroll d1 --ca-key &amp;lt;(lpass show app_name --field=&quot;Private Key&quot;) --app app_name&lt;&#x2F;code&gt;&lt;&#x2F;p&gt;
+&lt;&#x2F;blockquote&gt;
+&lt;p&gt;In addition to this, we also tried writing unit test cases for various functions used by the &lt;code&gt;trust&lt;&#x2F;code&gt; subcommand. These test cases provide a ~92% code coverage in the &lt;code&gt;trust.rs&lt;&#x2F;code&gt; file. Required changes were also made to the ci file to run the test cases on each commit.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;state-of-the-project&quot;&gt;State of the project&lt;&#x2F;h3&gt;
+&lt;p&gt;The majority of functionality related to the &lt;code&gt;Trust-anchor management&lt;&#x2F;code&gt; has been implemented and merged to the main branch of DRG.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;challenges-and-learning&quot;&gt;Challenges and learning&lt;&#x2F;h3&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;The primary challenge in this project was acquiring knowledge, I was extremely new to cert-based authentication, so I learned many things on the way.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;We had to adjust by introducing a &lt;code&gt;--cert&lt;&#x2F;code&gt; flag, due to some device naming limitations, but we plan to overcome that by implementing alias functionality.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;RSA key generation was done using RSA crate. Initially, it was not compatible with the Ring crate we have used so far. This was an obstacle. I reported this on the RSA crate&#x27;s community channel, they were already aware of this and had solved it on the main branch. Few days after this conversation, they made a new release and we were able to implement RSA key generation in our code.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;The learnings I&#x27;ve got throughout this time are unparalleled and they will stay with me for a long time. I shall continue to make more such contributions.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;thank-you&quot;&gt;Thank you&lt;&#x2F;h3&gt;
+</description>
+      </item>
+      <item>
+          <title>GSoC Phase 1</title>
+          <pubDate>Sat, 17 Jul 2021 00:00:00 +0000</pubDate>
+          <author>Unknown</author>
+          <link>https://vedangj044.github.io/blog/gsoc-phase1/</link>
+          <guid>https://vedangj044.github.io/blog/gsoc-phase1/</guid>
+          <description xml:base="https://vedangj044.github.io/blog/gsoc-phase1/">&lt;p&gt;In the past month, I worked on a feature in &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;drogue-iot&#x2F;drg&quot;&gt;DRG&lt;&#x2F;a&gt;, which enables a user to create and add Trust anchors to the application object, and use them to sign the device certificates.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;implementation&quot;&gt;Implementation&lt;&#x2F;h3&gt;
+&lt;p&gt;Drogue cloud tries to make it as easy as possible for devices to connect to the cloud. In today&#x27;s IoT world, a convenient and secure solution to authenticate devices is to use digitally signed certificates. We first need to obtain a public and private key pair which can be generated by algorithms like RSA, DSA, or ECDSA. An &lt;a href=&quot;https:&#x2F;&#x2F;sectigo.com&#x2F;resource-library&#x2F;what-is-x509-certificate&quot;&gt;X.509 certificate&lt;&#x2F;a&gt; is the envelope that holds a public key along with some other information about the usage and ownership of the certificate and the issuer. In Drogue IoT, we have applications (aka apps), which are containers for devices. The flow for X.509 authentication looks like this:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;We create a new key for an application. This is the root CA key, it needs to be stored securely. Let&#x27;s name it - app key.&lt;&#x2F;li&gt;
+&lt;li&gt;We create a certificate and sign it using the app key. This is a self-signed certificate, and it would work are the Trust anchor or root CA.&lt;&#x2F;li&gt;
+&lt;li&gt;We store this certificate in the application object on the cloud side.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Now, we have a trust anchor set up and ready to sign our device certificates. To do that:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;We download the Trust anchor certificate from the application object. This helps us add &quot;issuer&quot; information on the device certificate and also verify the private key.&lt;&#x2F;li&gt;
+&lt;li&gt;We take the app key as input.&lt;&#x2F;li&gt;
+&lt;li&gt;Then, we create a CSR i.e certificate signing request and sign it with the app key to create the device certificate.&lt;&#x2F;li&gt;
+&lt;li&gt;We can now export the certificate and private key for the device either to a file or to the terminal.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;This concludes the flow, now we can use this device certificate and its key to authenticate and send data to the drogue cloud.
+This may sound like a lot to do, especially if you are not familiar with tools like &lt;a href=&quot;https:&#x2F;&#x2F;www.openssl.org&#x2F;&quot;&gt;OpenSSL&lt;&#x2F;a&gt;, don&#x27;t worry, DRG is here to rescue. DRG abstracts this entire process in not more than 2 commands.&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;drg trust create&lt;&#x2F;code&gt;: Creates an app key, Trust anchor, and adds it to the application object.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;code&gt;drg trust enroll&lt;&#x2F;code&gt;: Uses the app key to sign and export device certificate and key.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;We have focused on having a pure rust implementation for all the cryptography we have used here. &lt;a href=&quot;https:&#x2F;&#x2F;crates.io&#x2F;crates&#x2F;rcgen&quot;&gt;&lt;code&gt;rcgen&lt;&#x2F;code&gt;&lt;&#x2F;a&gt; crate is just amazing and makes handling X.509 certificates very easy. Currently, We using the ECDSA algorithm to generate the key pairs, this is the default for the rcgen crate, but we are working on generating and using RSA key pairs as well.&lt;&#x2F;p&gt;
+&lt;p&gt;While implementing this, I started by creating a script that uses OpenSSL to generate certificates and authenticate devices. For a few days, I would create a Trust Anchor correctly but couldn&#x27;t authenticate any device. On sharing this with mentors, we discovered that it is because of a broken dependency but it got fixed pretty quickly. Once, my bash script worked successfully, I knew exactly what I had to do with &lt;code&gt;rcgen&lt;&#x2F;code&gt;. The majority of the work on this feature has been done in this &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;drogue-iot&#x2F;drg&#x2F;pull&#x2F;81&quot;&gt;PR&lt;&#x2F;a&gt;. I am happy to say it is now merged to the master branch.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;here-s-a-quick-demo&quot;&gt;Here&#x27;s a quick demo&lt;&#x2F;h3&gt;
+&lt;p&gt;To use X.509 authentication, please follow the following steps. Assuming that you are logged into drogue cloud if not use &lt;code&gt;drg login &amp;lt;drogue-cloud-endpoint&amp;gt;&lt;&#x2F;code&gt;.&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;drg create app &amp;lt;app_name&amp;gt;&lt;&#x2F;code&gt; - This commands create an application.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;code&gt;drg create device &amp;lt;device_name&amp;gt; --app &amp;lt;app_name&amp;gt; --cert&lt;&#x2F;code&gt; - This command creates a new device. Notice, the &lt;code&gt;--cert&lt;&#x2F;code&gt; flag used here, it formats the device name according to what is needed by Drogue cloud for certificate authentication.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;code&gt;drg trust create &amp;lt;app_name&amp;gt; --key-output &amp;lt;app-key-filename.pem&amp;gt;&lt;&#x2F;code&gt; - This command generates a new key and a certificate, uses the key to sign the cert, finally uploads the certificate to the application object, and writes the key to the file. Optionally, you may specify &lt;code&gt;--days &amp;lt;no_of_days&amp;gt;&lt;&#x2F;code&gt; argument, for the validity, by default it is 365.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;code&gt;drg trust enroll &amp;lt;device_name&amp;gt; --app &amp;lt;app_name&amp;gt; --ca-key &amp;lt;app_key_filename.pem&amp;gt; --key-output &amp;lt;deivce_key_filename.pem&amp;gt; --out &amp;lt;deivce_cert_filename.pem&amp;gt;&lt;&#x2F;code&gt; - This commands uses the app key to sign a newly generated device certificate + key. This certificate and key are exported to the respective files.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Now, we can use this device certificate and key to authenticate the devices. An example to do the same over MQTT using the &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;hivemq&#x2F;mqtt-cli&#x2F;releases&#x2F;tag&#x2F;v4.6.3&quot;&gt;MQTT-CLI (v4.6.2)&lt;&#x2F;a&gt; tool would look like.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;code&gt;mqtt pub -h &amp;lt;mqtt_host&amp;gt; -p 443 --cert device-cert.pem --key device-key.pem&lt;&#x2F;code&gt;&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;to-do&quot;&gt;To Do&lt;&#x2F;h3&gt;
+&lt;p&gt;This implementation has many things to improve, some of them are:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;RSA Key Pair, This is currently &quot;work in progress&quot;.&lt;&#x2F;li&gt;
+&lt;li&gt;Using existing private keys and existing certificates, in that case, DRG works only as a medium to upload them to the cloud.&lt;&#x2F;li&gt;
+&lt;li&gt;Trying to use it with a key store solution like &lt;a href=&quot;https:&#x2F;&#x2F;devopsheaven.com&#x2F;ssh&#x2F;security&#x2F;lastpass&#x2F;devops&#x2F;2018&#x2F;06&#x2F;13&#x2F;ssh-lastpass-cli.html&quot;&gt;LastPass&lt;&#x2F;a&gt;, could be a good topic for a blog post.&lt;&#x2F;li&gt;
+&lt;li&gt;Improving the implementation.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h3 id=&quot;thank-you&quot;&gt;Thank you&lt;&#x2F;h3&gt;
+&lt;p&gt;Thanks to &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;jbtrystram&quot;&gt;@jbtrystram&lt;&#x2F;a&gt;, &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;ctron&quot;&gt;@ctron&lt;&#x2F;a&gt; and everybody in the community for helping me and as always Thanks for reading.&lt;&#x2F;p&gt;
+</description>
+      </item>
+      <item>
+          <title>GSOC, Drogue IoT &amp; the Community</title>
+          <pubDate>Tue, 01 Jun 2021 00:00:00 +0000</pubDate>
+          <author>Unknown</author>
+          <link>https://vedangj044.github.io/blog/gsoc-community/</link>
+          <guid>https://vedangj044.github.io/blog/gsoc-community/</guid>
+          <description xml:base="https://vedangj044.github.io/blog/gsoc-community/">&lt;p&gt;This year, I got an opportunity to work as a Google summer of code student at &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;drogue-iot&quot;&gt;Drogue IoT&lt;&#x2F;a&gt;, which is a part of the JBoss community ( Red Hat or IBM ).&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;understanding-the-project&quot;&gt;Understanding the project&lt;&#x2F;h3&gt;
+&lt;p&gt;While looking for organizations on the GSOC website, I came across the idea list of the JBoss community. It had only 3 ideas all from an organization named Drogue IoT. I read those, but barely comprehended any, but I was curious so I went to their Github, blog, and matrix channel. To help myself understand what their project is, I started reading some of their earliest &lt;a href=&quot;https:&#x2F;&#x2F;blog.drogue.io&#x2F;first-steps-in-iot&#x2F;&quot;&gt;blogs&lt;&#x2F;a&gt;. I read that, and one line just clicked me, which was&lt;&#x2F;p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&quot;Plus, given it&#x27;s a known problem domain with at least one known solution to me, I can concentrate on the implementation, not on the specification and design.&quot;&lt;&#x2F;p&gt;
+&lt;&#x2F;blockquote&gt;
+&lt;p&gt;So, It&#x27;s okay to do everything by hand when we have one device. But we can&#x27;t do this at scale. There needs to be a system that sits in between devices and applications, to handle everything, from configuring devices to sending them commands. This is what  Drogue Cloud does,&lt;&#x2F;p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Device &amp;lt;-&amp;gt; Drogue Cloud &amp;lt;-&amp;gt; Applications.&lt;&#x2F;p&gt;
+&lt;&#x2F;blockquote&gt;
+&lt;p&gt;I loved this idea. Something more fascinating was the tech stack - Rust, Knative, Kafka, etc. I introduced myself on the community channel. I worked to understand each component of the tech stack. I started to play around and learn Rust, the best resource to do so is undoubtedly &lt;a href=&quot;https:&#x2F;&#x2F;doc.rust-lang.org&#x2F;book&#x2F;&quot;&gt;The Rust Book&lt;&#x2F;a&gt;. Everything was new to me, so I was extremely happy to get to know so much.&lt;&#x2F;p&gt;
+&lt;p&gt;Drogue IoT also focuses on the device side of things. Drogue device brings reusable components to the embedded side, this is done by an async actor framework written in Rust. I don&#x27;t understand much of it but I want to learn more and contribute to it at some point, maybe after GSOC. ;-)&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;community-bonding-and-contributions&quot;&gt;Community bonding and contributions&lt;&#x2F;h3&gt;
+&lt;p&gt;When I came across this organization around mid-January, I was interested in a &quot;Hey Rodney&quot; project, which is based on using voice commands to control Kubernetes. I researched about it but soon my interest faded. I came across a repository named &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;drogue-iot&#x2F;drg&quot;&gt;DRG&lt;&#x2F;a&gt;. It is a command-line client to communicate with Drogue Cloud API, which helps us manage devices and apps. I discovered some issues which I could solve, so I started right away.&lt;&#x2F;p&gt;
+&lt;p&gt;I love the community and the people at the organization. Everyone is immensely experienced, and an inspiration. I think it is a privilege to get an opportunity to work with such amazing people, that too sitting at home.&lt;&#x2F;p&gt;
+&lt;p&gt;I contributed to some patches in DRG, working with Jean-Baptiste Trystram. He was very supportive and guided me with my PRs.  I think this experience is larger and better than any internship I may have got, and this is the beauty of Open-source.&lt;&#x2F;p&gt;
+&lt;p&gt;I look forward to contributing and giving my best in the GSOC period and later too.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;my-project&quot;&gt;My project&lt;&#x2F;h3&gt;
+&lt;p&gt;I would write a separate blog entirely focused on my project, but here is a little glimpse of it. My project is about facilitating a DRG user with the ability to create X.509 certificates for a device, and a Trust Anchor ( root CA ) for the apps.&lt;&#x2F;p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Apps: Applications are isolated containers for a collection of devices.&lt;&#x2F;p&gt;
+&lt;&#x2F;blockquote&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Devices: Devices ideally map to a physical device, and are owned by exactly one application.&lt;&#x2F;p&gt;
+&lt;&#x2F;blockquote&gt;
+&lt;p&gt;Now, these devices can be authenticated using Username and password combinations, but it is not a good idea to do this at scale. The solution lies in the trust anchor flow.
+An app ( which owns the device ) has its root certificate and a private key. This key is used to sign the certificate flashed on the device. Whenever the device connects, it presents its certificate which is cryptographically verified with the App&#x27;s public key.&lt;&#x2F;p&gt;
+&lt;p&gt;This helps establish a One-to-Many mapping and provides a secure authentication mechanism for any number of devices.&lt;&#x2F;p&gt;
+&lt;p&gt;Drogue cloud already has the support for X.509 certs. DRG can abstract away many parts of this process. So, this is what we have to do.&lt;&#x2F;p&gt;
+&lt;p&gt;More blog to come on this topic, and as always&lt;&#x2F;p&gt;
+&lt;p&gt;Thanks for reading.&lt;&#x2F;p&gt;
+</description>
+      </item>
+      <item>
+          <title>Famulus - building a stock predictor</title>
+          <pubDate>Sun, 09 May 2021 00:00:00 +0000</pubDate>
+          <author>Unknown</author>
+          <link>https://vedangj044.github.io/blog/famulus/</link>
+          <guid>https://vedangj044.github.io/blog/famulus/</guid>
+          <description xml:base="https://vedangj044.github.io/blog/famulus/">&lt;p&gt;About a year back, my friends and I participated in a hackathon and received the following problem statement.&lt;&#x2F;p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Stock Market Trend Prediction using an Automated News Analysis&lt;&#x2F;p&gt;
+&lt;&#x2F;blockquote&gt;
+&lt;p&gt;I won&#x27;t narrate the story about the happenings of the hackathon, but I would surely say 2 things:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;www.nmimsindore.org&#x2F;&quot;&gt;NMIMS&lt;&#x2F;a&gt; is the most luxurious college in Indore.&lt;&#x2F;li&gt;
+&lt;li&gt;We didn&#x27;t win this hackathon, but we did secure 3rd place, unfortunately, there were prizes only for the top 2 :(&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;So, here is what we built.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;famulus&quot;&gt;Famulus&lt;&#x2F;h2&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Famulus means an assistant working for a scholar.&lt;&#x2F;p&gt;
+&lt;&#x2F;blockquote&gt;
+&lt;p&gt;Famulus is an easy-to-use web application, where the user enters a brand name ( company ), our web app scraps news related to it, analyses it and predicts the change in the stock prize in an interval of 5, 7, 15, and 30 days. Displaying 3 things on the UI - Change in the stock price, predicted graph and the 3 point news summary.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;how-does-it-work&quot;&gt;How does it work ?&lt;&#x2F;h3&gt;
+&lt;p&gt;The tech stack used here is&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Python: machine learning stuff&lt;&#x2F;li&gt;
+&lt;li&gt;Flask&lt;&#x2F;li&gt;
+&lt;li&gt;React&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h4 id=&quot;machine-learning-model&quot;&gt;Machine learning model&lt;&#x2F;h4&gt;
+&lt;p&gt;Various components are working together to give the final output.&lt;&#x2F;p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;Sentiment analyzer - This was an easy task, we took the very popular &lt;a href=&quot;https:&#x2F;&#x2F;www.kaggle.com&#x2F;kazanova&#x2F;sentiment140&quot;&gt;Twitter dataset&lt;&#x2F;a&gt; and trained a model which outputs the sentiment score of a text, -1 to 0 being negative and 0 to 1 being positive.
+We tested it on a small sample of news headlines and it worked quite well.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;We downloaded this &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vedangj044&#x2F;News_stock_prediction&#x2F;blob&#x2F;729566bafb245f055d3c20940925f76d49de1f3d&#x2F;india.csv&quot;&gt;Historic Indian news dataset&lt;&#x2F;a&gt; and filtered out all business news. Then put this through our sentiment analyzer and got a sentiment score for each news headline. The final dataset we obtained here was&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;code&gt;{ date, news_headline, sentiment_score }&lt;&#x2F;code&gt;&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;Then we downloaded &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vedangj044&#x2F;News_stock_prediction&#x2F;blob&#x2F;729566bafb245f055d3c20940925f76d49de1f3d&#x2F;help.csv&quot;&gt;Historic Sensex data from BSE&lt;&#x2F;a&gt; (Bombay stock exchange) website and merged it with the dataset created above with the index being &#x27;date&#x27;, so finally, the dataset looked like this&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;code&gt;{ date, (sensex_high + sensex_low)&#x2F;2, sentiment_score}&lt;&#x2F;code&gt;&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;Now, comes an interesting part, We have two 2 values - sensex_avg and sentiment_score, to map both of them we can simply use linear regression, but do we need to predict these? NO. This is something we already know. What we need here is to use today&#x27;s sentiment_score to predict the sensex_avg 5 days from now. We need to shift the sensex_avg column accordingly. So, the dataset now looks like&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;code&gt;{ date, sentiment_score, sensex_avg_date+5, sensex_avg_date+7, sensex_avg_date+15, sensex_avg_date+30 }&lt;&#x2F;code&gt;&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;Most of the work is done. We used linear regression to map sentiment_score to sensex_avg_date+5, and similarly others. We create 4 linear regression models here.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ol&gt;
+&lt;h4 id=&quot;flask&quot;&gt;Flask&lt;&#x2F;h4&gt;
+&lt;p&gt;Now, we use beautifulSoup to scrap the current news, put this news through the sentiment analyzer and obtain a sentiment score. This score is feed to the model and we get price predictions for 5, 7, 15, 30 days. Nice :)&lt;&#x2F;p&gt;
+&lt;p&gt;Then we went on to create a summarizer, this takes in a few articles and outputs a 3 point summary for it.&lt;&#x2F;p&gt;
+&lt;p&gt;Now, was the time to make all this deliverable. We create a Flask API exposing the prediction value, to plot the graph, we used &lt;a href=&quot;https:&#x2F;&#x2F;altair-viz.github.io&#x2F;&quot;&gt;Altair ( Vega )&lt;&#x2F;a&gt; which lets us send a JSON response that can be converted to a graph on the frontend.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;hackathon-ends&quot;&gt;Hackathon ends&lt;&#x2F;h3&gt;
+&lt;p&gt;All the work was done in the hackathon, there were a few patchworks and some things didn&#x27;t work, but I loved this project.
+I returned home and it took me about a week to remove all the patchwork and fix things, I wrote test cases and also added a WebSocket endpoint using FastAPI. Here is the link to the repository.&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vedangj044&#x2F;News_stock_prediction&quot;&gt;Backend&lt;&#x2F;a&gt; &lt;a href=&quot;https:&#x2F;&#x2F;travis-ci.com&#x2F;vedangj044&#x2F;News_stock_prediction&quot;&gt;&lt;img src=&quot;https:&#x2F;&#x2F;travis-ci.com&#x2F;vedangj044&#x2F;News_stock_prediction.svg?branch=master&quot; alt=&quot;Build Status&quot; &#x2F;&gt;&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vedangj044&#x2F;News_stock_font_end&quot;&gt;Frontend&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h4 id=&quot;note&quot;&gt;Note&lt;&#x2F;h4&gt;
+&lt;p&gt;Neither I nor my teammates are machine learning experts, so this approach has flaws, If you can provide a better approach, my inbox is always open, and as it always is&lt;&#x2F;p&gt;
+&lt;p&gt;Thanks for reading!&lt;&#x2F;p&gt;
+</description>
+      </item>
+      <item>
+          <title>Hello World!</title>
+          <pubDate>Wed, 14 Apr 2021 00:00:00 +0000</pubDate>
+          <author>Unknown</author>
+          <link>https://vedangj044.github.io/blog/article-3/</link>
+          <guid>https://vedangj044.github.io/blog/article-3/</guid>
+          <description xml:base="https://vedangj044.github.io/blog/article-3/">&lt;p&gt;It was a summer afternoon, back in 2014. I was restless, pacing around the hallway of the school corridor, I looked at the clock and then at my friend - Aniruddha. The prize distribution ceremony was about to begin, we rushed our way downstairs, looking for seats. The ceremony had started, I was nervous, the names of the winners were called out one after the other. Now it was time for our “Theme”, and suddenly Aniruddha’s name was called, he secured 3rd position, I was happy for him. One more name who secured 2nd position was called which was not me. I could hear my heart beating now. It was a moment longer than usual, Anirudhda returned after collecting his prize and sat beside me, I had my eyes closed, my leg shaking.&lt;&#x2F;p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;“Vedang Joshi for Automation of warehouse systems” the anchor called.&lt;&#x2F;p&gt;
+&lt;&#x2F;blockquote&gt;
+&lt;p&gt;Suddenly, all anxiety vanished. I had won this state-level science exhibition, all the talent and sweat I put into my project has fructified now. I shook hands with Aniruddha and went to collect my prize.&lt;&#x2F;p&gt;
+&lt;p&gt;This was the first time I had achieved something out of my comfort zone. This project is not on my resume but in retrospect, this incident has always encouraged me to work hard and choose challenging tasks.&lt;&#x2F;p&gt;
+&lt;p&gt;Let’s get to technology now, I would tell you what was the idea of this project.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;automation-of-warehouse&quot;&gt;Automation of Warehouse&lt;&#x2F;h3&gt;
+&lt;p&gt;The idea was pretty simple: We paste RF-ID tags on each product stored in a warehouse. A robot equipped with an RF-ID reader would scan that tag, pick up that product and hand it over to us. Thus, we get a completely automatic warehouse.&lt;&#x2F;p&gt;
+&lt;p&gt;I started with a toy JCB and connected it to a motor driver ( L293D ) and then to an Arduino UNO. I played out with this setup for a while. I now had to control this over the internet ( or local wifi for the demo ). I plugged in an ESP-01, and using AT commands, initiated a local server. Now, I should be able to send commands from chrome to this server, but unfortunately, it didn’t work. I debugged it and found ESP’s server turned down the moment I requested it from my browser, good people on the Arduino forum told me it was because of the low current from Arduino.&lt;&#x2F;p&gt;
+&lt;p&gt;I bought a simple 3.3v regulator and plugged the ESP directly into a battery, it still didn&#x27;t work. I tried a few more things before I gave up on ESP. 😀
+I switched to the HC-05 Bluetooth module and it was pretty awesome, I found an app on the play store - Bluetooth terminal, it was just a serial monitor but over Bluetooth. It’s time for the RF-id sensor now,  I bought a few plastic boxes and pasted RF-ids on them, these would resemble the products in the warehouse. Soon, I realized I was using the RF-tags working on a different frequency than the reader ( MFRC522 ). I had to change that.&lt;&#x2F;p&gt;
+&lt;p&gt;Now, somehow with tons of patchwork, everything seemed to be working. It’s time to learn JAVA and create an Android app. The purpose of the app was pretty simple, you see a list of products, you choose any product that interests you, and click on “Order”. This sends a signal to the toy JCB, which scans and looks for the proper RD-id, picks up the right product, and gets it to you. I had no idea of what databases are, so for the 10 products I had, I created a long chain of if-else statements.&lt;&#x2F;p&gt;
+&lt;p&gt;Now the main challenge was to send a signal to the Arduino which required knowledge of Bluetooth, which was obviously out of my league. So, I went back to my favorite app - Bluetooth terminal extracted its apk, unboxed it to dex files, and converted it to dex2jar. Thus reverse engineering my way, I was able to simply copy and paste the code in my app.  After hours of pain, everything was working and I was ready for the demo.&lt;&#x2F;p&gt;
+&lt;p&gt;Hopefully, this was just the beginning of my computer science journey.&lt;&#x2F;p&gt;
+</description>
+      </item>
+    </channel>
+</rss>
