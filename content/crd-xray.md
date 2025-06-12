@@ -10,6 +10,8 @@ author = "Vedang Joshi"
 tags = ["AI-Agent", "Langgraph", "Kubernetes"]
 +++
 
+[Github](https://github.com/vedangj044/cn-agent)
+
 If you're running Kubernetes seriously, chances are you've built a bunch of custom operators for your organization. These operators work wonders. But I've always felt something was missing — context. The kind of context that helps new engineers understand what’s happening, or helps me debug when things break. That’s where the idea for **CRD-Xray** started.
 
 My goal is simple: collect as much useful data from custom operators as possible, feed it into an AI agent, and use that agent to answer questions like, “What does this CRD do?”, “Which controller manages it?”, or “Why is it failing?”
