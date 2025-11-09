@@ -15,14 +15,14 @@
           <link>https://vedangj044.github.io/blog/crd-xray/</link>
           <guid>https://vedangj044.github.io/blog/crd-xray/</guid>
           <description xml:base="https://vedangj044.github.io/blog/crd-xray/">&lt;p&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vedangj044&#x2F;cn-agent&quot;&gt;Github&lt;&#x2F;a&gt;&lt;&#x2F;p&gt;
-&lt;p&gt;If you&#x27;re running Kubernetes seriously, chances are you&#x27;ve built a bunch of custom operators for your organization. These operators work wonders. But I&#x27;ve always felt something was missing — context. The kind of context that helps new engineers understand what’s happening, or helps me debug when things break. That’s where the idea for &lt;strong&gt;CRD-Xray&lt;&#x2F;strong&gt; started.&lt;&#x2F;p&gt;
+&lt;p&gt;If you&#x27;re running Kubernetes seriously, chances are you&#x27;ve built a bunch of custom operators for your organization. These operators work wonders. But I&#x27;ve always felt something was missing and that is context. The kind of context that helps new engineers understand what’s happening, or helps me debug when things break. That’s where the idea for &lt;strong&gt;CRD-Xray&lt;&#x2F;strong&gt; started.&lt;&#x2F;p&gt;
 &lt;p&gt;My goal is simple: collect as much useful data from custom operators as possible, feed it into an AI agent, and use that agent to answer questions like, “What does this CRD do?”, “Which controller manages it?”, or “Why is it failing?”&lt;&#x2F;p&gt;
 &lt;h2 id=&quot;the-4-problems-i-m-trying-to-solve&quot;&gt;The 4 Problems I&#x27;m Trying to Solve&lt;&#x2F;h2&gt;
 &lt;p&gt;To explain what CRD-Xray aims to solve, here are four specific pain points I’ve faced:&lt;&#x2F;p&gt;
 &lt;h4 id=&quot;1-no-documentation-for-custom-operators&quot;&gt;1. No Documentation for Custom Operators&lt;&#x2F;h4&gt;
-&lt;p&gt;Open-source tools from CNCF are well-documented, and you can find answers on forums and StackOverflow. But when it comes to internal, organization-specific operators — good luck. There’s usually zero documentation or outdated README files that don’t help.&lt;&#x2F;p&gt;
+&lt;p&gt;Open-source tools from CNCF are well-documented, and you can find answers on forums and StackOverflow. But when it comes to internal, organization-specific operators, well generally that&#x27;s not a happy path. There’s usually zero documentation or outdated README files that don’t help.&lt;&#x2F;p&gt;
 &lt;h4 id=&quot;2-debugging-is-a-nightmare&quot;&gt;2. Debugging is a Nightmare&lt;&#x2F;h4&gt;
-&lt;p&gt;There’s no built-in mapping in Kubernetes between a controller and the CRDs it manages. Tracing logs, understanding how different tools interact, and piecing it all together manually is painful. Imagine if we could debug across all tools and logs in one go — yeah, I know, sounds far-fetched, but I want to try.&lt;&#x2F;p&gt;
+&lt;p&gt;There’s no built-in mapping in Kubernetes between a controller and the CRDs it manages. Tracing logs, understanding how different tools interact, and piecing it all together manually is painful. Imagine if we could debug across all tools and logs in one go, I know it sounds far-fetched, but I wanted to try.&lt;&#x2F;p&gt;
 &lt;h4 id=&quot;3-mcp-integration&quot;&gt;3. MCP Integration&lt;&#x2F;h4&gt;
 &lt;p&gt;Since I’m already maintaining a database of CRDs, their controllers, logs, and resources, this makes a great base layer of context for future AI agents. By exposing it via MCP (Model Context Provider), I could let even smarter agents use this data later on.&lt;&#x2F;p&gt;
 &lt;h4 id=&quot;4-crd-metrics&quot;&gt;4. CRD Metrics&lt;&#x2F;h4&gt;
@@ -36,9 +36,9 @@
 &lt;li&gt;All pods — this list gets passed to an LLM to figure out which pod might be the controller for a given CRD&lt;&#x2F;li&gt;
 &lt;li&gt;Logs from the identified controller pod (fetched every hour for now)&lt;&#x2F;li&gt;
 &lt;&#x2F;ol&gt;
-&lt;p&gt;I store metadata like CRD schemas, controller names, and resource names in a &lt;strong&gt;SQLite&lt;&#x2F;strong&gt; database. For everything else — logs, manifests, etc. — I use &lt;strong&gt;Qdrant&lt;&#x2F;strong&gt; as a vector database.&lt;&#x2F;p&gt;
+&lt;p&gt;I store metadata like CRD schemas, controller names, and resource names in a &lt;strong&gt;SQLite&lt;&#x2F;strong&gt; database. For everything else like logs, manifests, etc. I use &lt;strong&gt;Qdrant&lt;&#x2F;strong&gt; as a vector database.&lt;&#x2F;p&gt;
 &lt;h3 id=&quot;why-kopf&quot;&gt;Why &lt;a href=&quot;https:&#x2F;&#x2F;kopf.readthedocs.io&#x2F;en&#x2F;stable&#x2F;&quot;&gt;Kopf&lt;&#x2F;a&gt;?&lt;&#x2F;h3&gt;
-&lt;p&gt;Choosing Kopf was an architectural decision. I wanted this controller to live &lt;em&gt;inside&lt;&#x2F;em&gt; the cluster. That way, it can continuously monitor and collect data without relying on external scripts or cron jobs. In the future, the idea is that you could just &lt;code&gt;helm install&lt;&#x2F;code&gt; this tool, and boom — your AI agent is up and running.&lt;&#x2F;p&gt;
+&lt;p&gt;Choosing Kopf was an architectural decision. I wanted this controller to live &lt;em&gt;inside&lt;&#x2F;em&gt; the cluster. That way, it can continuously monitor and collect data without relying on external scripts or cron jobs. In the future, the idea is that you could just &lt;code&gt;helm install&lt;&#x2F;code&gt; this tool, and boom your AI agent is up and running.&lt;&#x2F;p&gt;
 &lt;h2 id=&quot;step-2-the-langgraph-agent&quot;&gt;Step 2: The &lt;a href=&quot;https:&#x2F;&#x2F;langchain-ai.github.io&#x2F;langgraph&#x2F;&quot;&gt;LangGraph&lt;&#x2F;a&gt; Agent&lt;&#x2F;h2&gt;
 &lt;p&gt;Once the controller is up and collecting data, the next step is building an agent that can answer queries. I used &lt;strong&gt;LangGraph&lt;&#x2F;strong&gt; to create a simple state-based AI agent with this flow:&lt;&#x2F;p&gt;
 &lt;pre style=&quot;background-color:#2b303b;color:#6c7079;&quot;&gt;&lt;code&gt;&lt;span style=&quot;color:#abb2bf;&quot;&gt;user input -&amp;gt; SQL agent -&amp;gt; Vector agent -&amp;gt; Synthesizer -&amp;gt; Final output
@@ -835,7 +835,7 @@ Here, I would discuss some best practices that avoid common kinds of security vu
 &lt;blockquote&gt;
 &lt;p&gt;&lt;code&gt;drg trust create &amp;lt;app_name&amp;gt; --key-input &amp;lt;key_file&amp;gt;&lt;&#x2F;code&gt;&lt;&#x2F;p&gt;
 &lt;&#x2F;blockquote&gt;
-&lt;p&gt;In the intial proposal, there were talks about creating a &quot;key-store&quot; to securely save all these private keys, but as we progressed the decision about where to store the keys was left to the user. That&#x27;s when I thought, it would be a good idea to demonstrate how to store keys in a solution like &lt;a href=&quot;https:&#x2F;&#x2F;www.lastpass.com&#x2F;&quot;&gt;LastPass&lt;&#x2F;a&gt; and use it in drg. Frankly, it is just some &#x27;terminal trickery&#x27; :).&lt;&#x2F;p&gt;
+&lt;p&gt;In the intial proposal, there were talks about creating a &quot;key-store&quot; to securely save all these private keys, but as we progressed the decision about where to store the keys was left to the user. That&#x27;s when I thought, it would be a good idea to demonstrate how to store keys in a solution like LastPass and use it in drg. Frankly, it is just some &#x27;terminal trickery&#x27; :).&lt;&#x2F;p&gt;
 &lt;p&gt;Assuming you have LastPass cli installed, and you are logged in DRG and LastPassCli. To store app private key&lt;&#x2F;p&gt;
 &lt;blockquote&gt;
 &lt;p&gt;&lt;code&gt;printf &quot;Private Key: %s\n&quot; &quot;$(drg trust create --app app_name)&quot; | lpass add --non-interactive --sync=now &quot;app_name&quot; --note-type=ssh-key&lt;&#x2F;code&gt;&lt;&#x2F;p&gt;
@@ -965,7 +965,7 @@ An app ( which owns the device ) has its root certificate and a private key. Thi
 &lt;&#x2F;blockquote&gt;
 &lt;p&gt;I won&#x27;t narrate the story about the happenings of the hackathon, but I would surely say 2 things:&lt;&#x2F;p&gt;
 &lt;ul&gt;
-&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;www.nmimsindore.org&#x2F;&quot;&gt;NMIMS&lt;&#x2F;a&gt; is the most luxurious college in Indore.&lt;&#x2F;li&gt;
+&lt;li&gt;NMIMS is the most luxurious college in Indore.&lt;&#x2F;li&gt;
 &lt;li&gt;We didn&#x27;t win this hackathon, but we did secure 3rd place, unfortunately, there were prizes only for the top 2 :(&lt;&#x2F;li&gt;
 &lt;&#x2F;ul&gt;
 &lt;p&gt;So, here is what we built.&lt;&#x2F;p&gt;
@@ -1012,7 +1012,7 @@ We tested it on a small sample of news headlines and it worked quite well.&lt;&#
 &lt;p&gt;All the work was done in the hackathon, there were a few patchworks and some things didn&#x27;t work, but I loved this project.
 I returned home and it took me about a week to remove all the patchwork and fix things, I wrote test cases and also added a WebSocket endpoint using FastAPI. Here is the link to the repository.&lt;&#x2F;p&gt;
 &lt;ul&gt;
-&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vedangj044&#x2F;News_stock_prediction&quot;&gt;Backend&lt;&#x2F;a&gt; &lt;a href=&quot;https:&#x2F;&#x2F;travis-ci.com&#x2F;vedangj044&#x2F;News_stock_prediction&quot;&gt;&lt;img src=&quot;https:&#x2F;&#x2F;travis-ci.com&#x2F;vedangj044&#x2F;News_stock_prediction.svg?branch=master&quot; alt=&quot;Build Status&quot; &#x2F;&gt;&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vedangj044&#x2F;News_stock_prediction&quot;&gt;Backend&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
 &lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vedangj044&#x2F;News_stock_font_end&quot;&gt;Frontend&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
 &lt;&#x2F;ul&gt;
 &lt;h4 id=&quot;note&quot;&gt;Note&lt;&#x2F;h4&gt;

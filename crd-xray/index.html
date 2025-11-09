@@ -123,14 +123,14 @@
         </div>
     </header>
     <div class="post-content"><p><a href="https://github.com/vedangj044/cn-agent">Github</a></p>
-<p>If you're running Kubernetes seriously, chances are you've built a bunch of custom operators for your organization. These operators work wonders. But I've always felt something was missing — context. The kind of context that helps new engineers understand what’s happening, or helps me debug when things break. That’s where the idea for <strong>CRD-Xray</strong> started.</p>
+<p>If you're running Kubernetes seriously, chances are you've built a bunch of custom operators for your organization. These operators work wonders. But I've always felt something was missing and that is context. The kind of context that helps new engineers understand what’s happening, or helps me debug when things break. That’s where the idea for <strong>CRD-Xray</strong> started.</p>
 <p>My goal is simple: collect as much useful data from custom operators as possible, feed it into an AI agent, and use that agent to answer questions like, “What does this CRD do?”, “Which controller manages it?”, or “Why is it failing?”</p>
 <h2 id="the-4-problems-i-m-trying-to-solve">The 4 Problems I'm Trying to Solve</h2>
 <p>To explain what CRD-Xray aims to solve, here are four specific pain points I’ve faced:</p>
 <h4 id="1-no-documentation-for-custom-operators">1. No Documentation for Custom Operators</h4>
-<p>Open-source tools from CNCF are well-documented, and you can find answers on forums and StackOverflow. But when it comes to internal, organization-specific operators — good luck. There’s usually zero documentation or outdated README files that don’t help.</p>
+<p>Open-source tools from CNCF are well-documented, and you can find answers on forums and StackOverflow. But when it comes to internal, organization-specific operators, well generally that's not a happy path. There’s usually zero documentation or outdated README files that don’t help.</p>
 <h4 id="2-debugging-is-a-nightmare">2. Debugging is a Nightmare</h4>
-<p>There’s no built-in mapping in Kubernetes between a controller and the CRDs it manages. Tracing logs, understanding how different tools interact, and piecing it all together manually is painful. Imagine if we could debug across all tools and logs in one go — yeah, I know, sounds far-fetched, but I want to try.</p>
+<p>There’s no built-in mapping in Kubernetes between a controller and the CRDs it manages. Tracing logs, understanding how different tools interact, and piecing it all together manually is painful. Imagine if we could debug across all tools and logs in one go, I know it sounds far-fetched, but I wanted to try.</p>
 <h4 id="3-mcp-integration">3. MCP Integration</h4>
 <p>Since I’m already maintaining a database of CRDs, their controllers, logs, and resources, this makes a great base layer of context for future AI agents. By exposing it via MCP (Model Context Provider), I could let even smarter agents use this data later on.</p>
 <h4 id="4-crd-metrics">4. CRD Metrics</h4>
@@ -144,9 +144,9 @@
 <li>All pods — this list gets passed to an LLM to figure out which pod might be the controller for a given CRD</li>
 <li>Logs from the identified controller pod (fetched every hour for now)</li>
 </ol>
-<p>I store metadata like CRD schemas, controller names, and resource names in a <strong>SQLite</strong> database. For everything else — logs, manifests, etc. — I use <strong>Qdrant</strong> as a vector database.</p>
+<p>I store metadata like CRD schemas, controller names, and resource names in a <strong>SQLite</strong> database. For everything else like logs, manifests, etc. I use <strong>Qdrant</strong> as a vector database.</p>
 <h3 id="why-kopf">Why <a href="https://kopf.readthedocs.io/en/stable/">Kopf</a>?</h3>
-<p>Choosing Kopf was an architectural decision. I wanted this controller to live <em>inside</em> the cluster. That way, it can continuously monitor and collect data without relying on external scripts or cron jobs. In the future, the idea is that you could just <code>helm install</code> this tool, and boom — your AI agent is up and running.</p>
+<p>Choosing Kopf was an architectural decision. I wanted this controller to live <em>inside</em> the cluster. That way, it can continuously monitor and collect data without relying on external scripts or cron jobs. In the future, the idea is that you could just <code>helm install</code> this tool, and boom your AI agent is up and running.</p>
 <h2 id="step-2-the-langgraph-agent">Step 2: The <a href="https://langchain-ai.github.io/langgraph/">LangGraph</a> Agent</h2>
 <p>Once the controller is up and collecting data, the next step is building an agent that can answer queries. I used <strong>LangGraph</strong> to create a simple state-based AI agent with this flow:</p>
 <pre style="background-color:#2b303b;color:#6c7079;"><code><span style="color:#abb2bf;">user input -&gt; SQL agent -&gt; Vector agent -&gt; Synthesizer -&gt; Final output

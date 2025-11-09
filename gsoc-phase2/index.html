@@ -178,7 +178,7 @@
 <blockquote>
 <p><code>drg trust create &lt;app_name&gt; --key-input &lt;key_file&gt;</code></p>
 </blockquote>
-<p>In the intial proposal, there were talks about creating a "key-store" to securely save all these private keys, but as we progressed the decision about where to store the keys was left to the user. That's when I thought, it would be a good idea to demonstrate how to store keys in a solution like <a href="https://www.lastpass.com/">LastPass</a> and use it in drg. Frankly, it is just some 'terminal trickery' :).</p>
+<p>In the intial proposal, there were talks about creating a "key-store" to securely save all these private keys, but as we progressed the decision about where to store the keys was left to the user. That's when I thought, it would be a good idea to demonstrate how to store keys in a solution like LastPass and use it in drg. Frankly, it is just some 'terminal trickery' :).</p>
 <p>Assuming you have LastPass cli installed, and you are logged in DRG and LastPassCli. To store app private key</p>
 <blockquote>
 <p><code>printf "Private Key: %s\n" "$(drg trust create --app app_name)" | lpass add --non-interactive --sync=now "app_name" --note-type=ssh-key</code></p>
