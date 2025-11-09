@@ -12,7 +12,7 @@ tags = ["AI-Agent", "Langgraph", "Kubernetes"]
 
 [Github](https://github.com/vedangj044/cn-agent)
 
-If you're running Kubernetes seriously, chances are you've built a bunch of custom operators for your organization. These operators work wonders. But I've always felt something was missing — context. The kind of context that helps new engineers understand what’s happening, or helps me debug when things break. That’s where the idea for **CRD-Xray** started.
+If you're running Kubernetes seriously, chances are you've built a bunch of custom operators for your organization. These operators work wonders. But I've always felt something was missing and that is context. The kind of context that helps new engineers understand what’s happening, or helps me debug when things break. That’s where the idea for **CRD-Xray** started.
 
 My goal is simple: collect as much useful data from custom operators as possible, feed it into an AI agent, and use that agent to answer questions like, “What does this CRD do?”, “Which controller manages it?”, or “Why is it failing?”
 
@@ -22,11 +22,11 @@ To explain what CRD-Xray aims to solve, here are four specific pain points I’v
 
 #### 1. No Documentation for Custom Operators
 
-Open-source tools from CNCF are well-documented, and you can find answers on forums and StackOverflow. But when it comes to internal, organization-specific operators — good luck. There’s usually zero documentation or outdated README files that don’t help.
+Open-source tools from CNCF are well-documented, and you can find answers on forums and StackOverflow. But when it comes to internal, organization-specific operators, well generally that's not a happy path. There’s usually zero documentation or outdated README files that don’t help.
 
 #### 2. Debugging is a Nightmare
 
-There’s no built-in mapping in Kubernetes between a controller and the CRDs it manages. Tracing logs, understanding how different tools interact, and piecing it all together manually is painful. Imagine if we could debug across all tools and logs in one go — yeah, I know, sounds far-fetched, but I want to try.
+There’s no built-in mapping in Kubernetes between a controller and the CRDs it manages. Tracing logs, understanding how different tools interact, and piecing it all together manually is painful. Imagine if we could debug across all tools and logs in one go, I know it sounds far-fetched, but I wanted to try.
 
 #### 3. MCP Integration
 
@@ -46,11 +46,11 @@ To solve any of the above, I had to first collect the right data. I started by b
 4. All pods — this list gets passed to an LLM to figure out which pod might be the controller for a given CRD
 5. Logs from the identified controller pod (fetched every hour for now)
 
-I store metadata like CRD schemas, controller names, and resource names in a **SQLite** database. For everything else — logs, manifests, etc. — I use **Qdrant** as a vector database.
+I store metadata like CRD schemas, controller names, and resource names in a **SQLite** database. For everything else like logs, manifests, etc. I use **Qdrant** as a vector database.
 
 ### Why [Kopf](https://kopf.readthedocs.io/en/stable/)?
 
-Choosing Kopf was an architectural decision. I wanted this controller to live *inside* the cluster. That way, it can continuously monitor and collect data without relying on external scripts or cron jobs. In the future, the idea is that you could just `helm install` this tool, and boom — your AI agent is up and running.
+Choosing Kopf was an architectural decision. I wanted this controller to live *inside* the cluster. That way, it can continuously monitor and collect data without relying on external scripts or cron jobs. In the future, the idea is that you could just `helm install` this tool, and boom your AI agent is up and running.
 
 ## Step 2: The [LangGraph](https://langchain-ai.github.io/langgraph/) Agent
 
