@@ -19,6 +19,8 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@master
+        with:
+          submodules: true
       #If doing default params the following be replaced by [zola-build](https://github.com/knzai/zola-build)
       - uses: knzai/zola-cli@check
       - uses: knzai/zola-cli@build
