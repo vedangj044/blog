@@ -58,7 +58,7 @@ The only additional step is
 Now, you can use the `private.pk8` file to sign app or device certificates using
 > `drg trust create <app_name> --key-input <key_file>`
 
-In the intial proposal, there were talks about creating a "key-store" to securely save all these private keys, but as we progressed the decision about where to store the keys was left to the user. That's when I thought, it would be a good idea to demonstrate how to store keys in a solution like [LastPass](https://www.lastpass.com/) and use it in drg. Frankly, it is just some 'terminal trickery' :).
+In the intial proposal, there were talks about creating a "key-store" to securely save all these private keys, but as we progressed the decision about where to store the keys was left to the user. That's when I thought, it would be a good idea to demonstrate how to store keys in a solution like LastPass and use it in drg. Frankly, it is just some 'terminal trickery' :).
 
 Assuming you have LastPass cli installed, and you are logged in DRG and LastPassCli. To store app private key
 > `printf "Private Key: %s\n" "$(drg trust create --app app_name)" | lpass add --non-interactive --sync=now "app_name" --note-type=ssh-key`

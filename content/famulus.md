@@ -16,7 +16,7 @@ About a year back, my friends and I participated in a hackathon and received the
 
 I won't narrate the story about the happenings of the hackathon, but I would surely say 2 things:
 
-- [NMIMS](https://www.nmimsindore.org/) is the most luxurious college in Indore.
+- NMIMS is the most luxurious college in Indore.
 - We didn't win this hackathon, but we did secure 3rd place, unfortunately, there were prizes only for the top 2 :(
 
 So, here is what we built.
@@ -69,7 +69,7 @@ Now, was the time to make all this deliverable. We create a Flask API exposing t
 All the work was done in the hackathon, there were a few patchworks and some things didn't work, but I loved this project.
 I returned home and it took me about a week to remove all the patchwork and fix things, I wrote test cases and also added a WebSocket endpoint using FastAPI. Here is the link to the repository.
 
-- [Backend](https://github.com/vedangj044/News_stock_prediction) [![Build Status](https://travis-ci.com/vedangj044/News_stock_prediction.svg?branch=master)](https://travis-ci.com/vedangj044/News_stock_prediction)
+- [Backend](https://github.com/vedangj044/News_stock_prediction)
 - [Frontend](https://github.com/vedangj044/News_stock_font_end)
 
 #### Note
