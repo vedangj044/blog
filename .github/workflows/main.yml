@@ -1,13 +1,26 @@
-on: push
-name: Build preview on Github-Pages
+name: Deploy Zola to GH Pages
+on:
+  push:
+    branches:
+      - main 
+  pull_request:
+  
 jobs:
   build:
-    name: shalzz/zola-deploy-action
     runs-on: ubuntu-latest
+    if: github.ref != 'refs/heads/main'
     steps:
-    - uses: actions/checkout@master
-    - name: shalzz/zola-deploy-action
-      uses: shalzz/zola-deploy-action@master
-      env:
-        PAGES_BRANCH: gh-pages
-        TOKEN: ${{ secrets.TOKEN }}
+      - uses: actions/checkout@master
+      - uses: knzai/zola-cli@check
+      - uses: knzai/zola-cli@build
+          
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@master
+      #If doing default params the following be replaced by [zola-build](https://github.com/knzai/zola-build)
+      - uses: knzai/zola-cli@check
+      - uses: knzai/zola-cli@build
+      - name: Deploy 🚀
+        uses: JamesIves/github-pages-deploy-action@v4
